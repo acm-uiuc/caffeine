@@ -1,0 +1,237 @@
+<?xml version="1.0"?>
+<HAPSIM>
+   <General>
+      <Build>1930</Build>
+      <Position>
+         <top>121</top>
+         <bottom>796</bottom>
+         <left>1096</left>
+         <right>1393</right>
+      </Position>
+      <StayOnTop>1</StayOnTop>
+      <Target>ATmega644PA</Target>
+   </General>
+   <Views>
+      <Buttons>
+         <Name>Buttons1</Name>
+         <Position>
+            <top>3</top>
+            <left>4</left>
+         </Position>
+         <Config index="0">
+            <Name>Select 1</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>0</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="1">
+            <Name>Select 2</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>1</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="2">
+            <Name>Select 3</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>2</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="3">
+            <Name>Select 4</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>3</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <TrinaryGroupEnable index="0">0</TrinaryGroupEnable>
+         <TrinaryGroupEnable index="1">0</TrinaryGroupEnable>
+      </Buttons>
+      <Buttons>
+         <Name>Buttons2</Name>
+         <Position>
+            <top>167</top>
+            <left>6</left>
+         </Position>
+         <Config index="0">
+            <Name>Select 5</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>4</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="1">
+            <Name>Select 6</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>5</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="2">
+            <Name>Select 7</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>6</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="3">
+            <Name>Select 8</Name>
+            <PortPin>
+               <Port>PORTB</Port>
+               <Bit>7</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <TrinaryGroupEnable index="0">0</TrinaryGroupEnable>
+         <TrinaryGroupEnable index="1">0</TrinaryGroupEnable>
+      </Buttons>
+      <Buttons>
+         <Name>Buttons3</Name>
+         <Position>
+            <top>6</top>
+            <left>139</left>
+         </Position>
+         <Config index="0">
+            <Name>Select 9</Name>
+            <PortPin>
+               <Port>PORTD</Port>
+               <Bit>6</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="1">
+            <Name>Button1</Name>
+            <PortPin>
+               <Port>N.C.</Port>
+               <Bit>5</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="2">
+            <Name>Button2</Name>
+            <PortPin>
+               <Port>N.C.</Port>
+               <Bit>6</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="3">
+            <Name>Button3</Name>
+            <PortPin>
+               <Port>N.C.</Port>
+               <Bit>7</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <TrinaryGroupEnable index="0">0</TrinaryGroupEnable>
+         <TrinaryGroupEnable index="1">0</TrinaryGroupEnable>
+      </Buttons>
+      <LEDs>
+         <Name>LEDs1</Name>
+         <Position>
+            <top>173</top>
+            <left>146</left>
+         </Position>
+         <Config index="0">
+            <Color>Red</Color>
+            <Name>LED0</Name>
+            <PortPin>
+               <Port>PORTC</Port>
+               <Bit>0</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="1">
+            <Color>Red</Color>
+            <Name>LED1</Name>
+            <PortPin>
+               <Port>PORTC</Port>
+               <Bit>1</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="2">
+            <Color>Red</Color>
+            <Name>LED2</Name>
+            <PortPin>
+               <Port>PORTC</Port>
+               <Bit>2</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="3">
+            <Color>Red</Color>
+            <Name>LED3</Name>
+            <PortPin>
+               <Port>PORTC</Port>
+               <Bit>3</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="4">
+            <Color>Red</Color>
+            <Name>LED4</Name>
+            <PortPin>
+               <Port>PORTC</Port>
+               <Bit>4</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="5">
+            <Color>Red</Color>
+            <Name>x</Name>
+            <PortPin>
+               <Port>PORTA</Port>
+               <Bit>5</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="6">
+            <Color>Red</Color>
+            <Name>x</Name>
+            <PortPin>
+               <Port>PORTA</Port>
+               <Bit>6</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+         <Config index="7">
+            <Color>Red</Color>
+            <Name>x</Name>
+            <PortPin>
+               <Port>PORTA</Port>
+               <Bit>7</Bit>
+            </PortPin>
+            <Invert>0</Invert>
+         </Config>
+      </LEDs>
+      <Terminal>
+         <Name></Name>
+         <Position>
+            <top>333</top>
+            <left>12</left>
+            <width>256</width>
+            <height>244</height>
+         </Position>
+         <Interface>USART0</Interface>
+         <localEcho>0</localEcho>
+         <redirectEnable>0</redirectEnable>
+         <Redirection>
+            <Port>COM2</Port>
+            <Baudrate>1200</Baudrate>
+            <Parity>None</Parity>
+            <Stopbits>1</Stopbits>
+            <Flowcontrol>None</Flowcontrol>
+         </Redirection>
+      </Terminal>
+   </Views>
+</HAPSIM>

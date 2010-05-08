@@ -1,0 +1,11 @@
+*.o
+*.obj
+*.elf
+*.eep
+*.hex
+*.bat
+*.map
+*.o.d
+caffeine_uc/default/Makefile
+*.lss
+*.tmp
