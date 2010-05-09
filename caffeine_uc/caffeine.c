@@ -5,6 +5,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <compat/ina90.h>
 
 char card_data[CARDBUF_L];
 uint8_t card_bit_counter, card_byte_counter, card_status = 0;
@@ -12,9 +13,10 @@ uint8_t card_bit_counter, card_byte_counter, card_status = 0;
 char current_command;
 
 char transmit_buffer[SER_BUF_L];
-uint8_t transmit_length, transmit_index;
+volatile uint8_t transmit_length;
+uint8_t transmit_index;
 
-uint8_t LCD_flags = 0;
+volatile uint8_t LCD_flags = 0;
 
 uint8_t button_debounce[9];
 
@@ -152,6 +154,7 @@ void send_ack() {
 }
 
 void send_error() {
+
 	while (transmit_length != 0)
 		_delay_us(100);
 
@@ -237,7 +240,7 @@ int main() {
 	// RS-232 setup.  115200kbps, interrups for RX and TX complete, enable TX and RX.
 	UCSR0B = _BV(RXCIE0) | _BV(TXCIE0) | _BV(RXEN0) | _BV(TXEN0);
 	UBRR0H = 0;
-	UBRR0L = 12;
+	UBRR0L = 9;
 
 	// Enable the interrupt on the clock line of the card reader.
 	EICRA = _BV(ISC11) | _BV(ISC00) | _BV(ISC01);
@@ -248,6 +251,10 @@ int main() {
 	DDRC = 0xff;
 	DDRB = 0x00;
 	DDRA = 0xff;
+
+	// Enable pullups for inputs - unneeded later in life.  Used for debooging
+	PORTB = 0xff;
+	PORTD = 0xfc;
 
 	sei();
 
@@ -261,6 +268,9 @@ int main() {
 		input = input_l;
 		if (input_h != 0)
 			input += 256;
+
+		input = ~input;
+		input &= 0x1ff;
 		
 		mask = 1;
 		for (i = 0; i < 9; i++) {

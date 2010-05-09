@@ -1,4 +1,4 @@
-#define F_CPU 8000000
+#define F_CPU 18432000
 #define BAUD_RATE 115200
 
 #define SER_BUF_L 255
