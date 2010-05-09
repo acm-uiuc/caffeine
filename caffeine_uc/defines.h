@@ -6,4 +6,4 @@
 
 #define RESET_CMD 160
 
-#define CARDBUF_L 41
+#define CARDBUF_L 32

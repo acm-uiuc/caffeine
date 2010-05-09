@@ -1,24 +1,34 @@
+// Project specific header files 
 #include "defines.h"
 #include "caffeine.h"
 
+// Include inttypes to get uint*_t
 #include <inttypes.h>
+// IO includes for port access
 #include <avr/io.h>
+// Interrupt control
 #include <avr/interrupt.h>
+// Delay functions
 #include <util/delay.h>
-#include <compat/ina90.h>
 
+// Buffer for card swipe data
 char card_data[CARDBUF_L];
+// Counters for which bit is being read from the card and
+// which byte is being counted
 uint8_t card_bit_counter, card_byte_counter, card_status = 0;
 
+// Buffer for which command is currently being processed
 char current_command;
 
+// Serial transmit buffer, the length of data in the buffer, the index of
+// which character is to be transferred next.
 char transmit_buffer[SER_BUF_L];
 volatile uint8_t transmit_length;
 uint8_t transmit_index;
 
+// LCD update status
 volatile uint8_t LCD_flags = 0;
 
-uint8_t button_debounce[9];
 
 ISR(INT0_vect) {
 	
@@ -35,26 +45,30 @@ ISR(INT1_vect) {
 
 	uint8_t input_bit = 0;
 
-	if (card_bit_counter == 0) {
+	if (card_bit_counter == 0x01) {
 		card_data[card_byte_counter] = 0;
 	}
 
+	input_bit = PIND;
+	input_bit = input_bit & 16;
 
-	input_bit = PORTD & 16;
-	card_bit_counter++;
 
-	card_data[card_byte_counter] <<= 1;
+	if (input_bit == 0) {
+		card_data[card_byte_counter] |= card_bit_counter;
+		card_status = 1;
+	}
 
-	if (input_bit == 0)
-		card_data[card_byte_counter]++;
+	if (card_status == 1) 
+		card_bit_counter <<= 1;
 
-	if (card_bit_counter == 5) {
-		card_bit_counter = 0;
-		
-		if (card_byte_counter < CARDBUF_L - 1) {
+	if (card_bit_counter > 0x10) {
+		card_bit_counter = 0x01;
+		if (card_byte_counter < CARDBUF_L && card_data[card_byte_counter] != 0 ) {
 			card_byte_counter++;
 		}
 	}
+
+
 
 }
 
@@ -158,7 +172,7 @@ void send_error() {
 	while (transmit_length != 0)
 		_delay_us(100);
 
-	UDR0 = 'A';
+	UDR0 = 'E';
 	transmit_length = 0;
 	transmit_index = 0;
 
@@ -193,8 +207,7 @@ char check_card_data() {
 	uint8_t i;
 
 	for (i = 0; i < CARDBUF_L; i++) {
-		card_data[i] &= 0x0f;
-		card_data[i] += 0x30;
+		card_data[i] |= 0x30;
 	}
 
 	return 0;
@@ -209,8 +222,9 @@ void reset_card_data() {
 		card_data[i] = 0;
 	}
 
-	card_bit_counter = 0;
+	card_bit_counter = 0x01;
 	card_byte_counter = 0;
+	card_status = 0;
 
 }
 
@@ -236,6 +250,7 @@ int main() {
 	uint16_t button_status = 0;
 	uint16_t  mask;
 	
+	uint8_t button_debounce[9];
 
 	// RS-232 setup.  115200kbps, interrups for RX and TX complete, enable TX and RX.
 	UCSR0B = _BV(RXCIE0) | _BV(TXCIE0) | _BV(RXEN0) | _BV(TXEN0);
@@ -243,7 +258,7 @@ int main() {
 	UBRR0L = 9;
 
 	// Enable the interrupt on the clock line of the card reader.
-	EICRA = _BV(ISC11) | _BV(ISC00) | _BV(ISC01);
+	EICRA = 0x0b;
 	EIMSK = _BV(INT1) | _BV(INT0);
 
 	// IO setup.  Disable pull-up resistors, set port A, C, and D7 to out; rest to in.
@@ -253,8 +268,8 @@ int main() {
 	DDRA = 0xff;
 
 	// Enable pullups for inputs - unneeded later in life.  Used for debooging
-	PORTB = 0xff;
-	PORTD = 0xfc;
+//	PORTB = 0xff;
+//	PORTD = 0xfc;
 
 	sei();
 
