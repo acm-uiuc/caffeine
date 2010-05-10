@@ -1,5 +1,5 @@
 /*
- * caffeine.c v0.1
+ * caffeine.c v0.2
  *
  * Microcontroller source code for Caffeine 2 controller board.
  *
@@ -91,6 +91,10 @@
  * 		checking, serial I/O.
  * 			- mike <mike@tuxnami.org>
  *
+ * v0.2 -
+ *      Added the ability to output strings, capability and version data.
+ *          - mike <mike@tuxnami.org>
+ *
  */
 
 // Project specific header files 
@@ -98,9 +102,13 @@
 #include "caffeine.h"
 
 #include <inttypes.h>
+#include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+
+#define VERSION_DATA " Cavveine2 v0.2 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
+#define CAPABILITY_DATA " CMD: Vvc  RES: CUDAEs"
 
 // Card data globals
 char card_data[CARDBUF_L];
@@ -116,6 +124,10 @@ uint8_t transmit_index;
 
 // LCD panel globals
 volatile uint8_t LCD_flags = 0;
+volatile uint8_t LCD_write_buffer[SEL_NUM][LCD_CHARS];
+volatile uint8_t LCD_output_buffer[SEL_NUM][LCD_CHARS];
+volatile uint8_t LCD_contents_buffer[SEL_NUM][LCD_CHARS];
+volatile uint8_t LCD_custom_chars[SEL_NUM][8][8];
 
 
 // External interrupt pin 0 ISR, triggered on the card detect rising edge
@@ -156,8 +168,6 @@ ISR(INT1_vect) {
 	// Since the data is negated on these type of card readers (high is zero and
 	// low is one), we will set the bit whenever we see Pd4 to be low.
 	if (input_bit == 0) {
-		// When we should be reading the 1 of the data, or the mask into the card
-		// data, setting the bit.
 		card_data[card_byte_counter] |= card_bit_counter;
 		// We want to set card status to 1 when the first one is seen on the card
 		// data line.  This is to skip all the leading zeroes on the data stripe
@@ -178,8 +188,6 @@ ISR(INT1_vect) {
 			card_byte_counter++;
 		}
 	}
-
-
 
 }
 
@@ -222,6 +230,12 @@ ISR(USART0_RX_vect) {
 				case 'V':  // Vend command
 					current_command = input_char;
 					break;
+				case 'v':  // Version
+					send_string(VERSION_DATA);
+					break;
+				case 'c': // capability
+					send_string(CAPABILITY_DATA);
+					break;
 				default:  // Anything else, set the command to null and break.
 					current_command = 0;
 					break;
@@ -235,7 +249,7 @@ ISR(USART0_RX_vect) {
 					input_char -= 0x30;  // Strip off ascii encoding for numbers
 					// If the input character is between 0 and the number of selections
 					// we will vend.
-					if (input_char >= 0 || input_char <= SEL_NUM) {  
+					if (input_char >= 0 || input_char < SEL_NUM) {  
 						vend(input_char);
 					}
 					// Done processing the command.
@@ -274,7 +288,7 @@ ISR(USART0_TX_vect) {
 void vend(char selection) {
 
 	// Check for validity of the selection
-	if (selection <= SEL_NUM) {
+	if (selection < SEL_NUM) {
 
 		// Spinlock while we are waiting for the LCD to finish writing.
 		uint8_t i;
@@ -365,7 +379,6 @@ void send_button_up(uint8_t button) {
 // Did someone screw up a swipe?  (how hard is it to sipe, really?)
 char check_card_data() {
 
-	// Some integers.  Used for stuff.  Figure it out.
 	uint8_t i, parity_count, parity_mask;
 
 	// Loop for the number of bytes in the card buffer.  In the loop
@@ -440,7 +453,29 @@ void send_card_data() {
 
 }
 
-// Main!  Main!  Our Main!
+// Send a string
+void send_string(char *string) {
+
+	int length = 0;
+
+	// The usual transmit delay spin.
+	while (transmit_length != 0)
+		_delay_us(100);
+
+	// Make sure we're not doing anything dumb with the string.
+	length = strlen(string);
+	if (length > SER_BUF_L)
+		length = SER_BUF_L;
+	
+	// copy the string into the buffer, start the transmit
+	strlcpy(transmit_buffer, string, length);
+	UDR0 = 's';
+
+	transmit_length = length;
+	transmit_index = 0;
+
+}
+
 int main() {
 	// Variables for our inputs, iterators,  button status and a bitmask.
 	uint8_t input_l, input_h, i;
@@ -449,10 +484,11 @@ int main() {
 	uint16_t  mask;
 	
 	// Array for debouncing.
-	uint8_t button_debounce[9];
+	uint8_t button_debounce[SEL_NUM];
 
 	// RS-232 setup.  115200kbps, interrups for RX and TX complete, enable TX and RX.
 	UCSR0B = _BV(RXCIE0) | _BV(TXCIE0) | _BV(RXEN0) | _BV(TXEN0);
+	// FIXME:  future improvement, add speed, parity and stop bit config, maybe even have the computer be able to change them
 	UBRR0H = 0;
 	UBRR0L = 9;
 
@@ -493,7 +529,7 @@ int main() {
 		
 		// Set the mask and begin looping around checking each input
 		mask = 1;
-		for (i = 0; i < 9; i++) {
+		for (i = 0; i < SEL_NUM; i++) {
 
 			// if the current bit is high and the status is low we will want to
 			// increment the debounce and check the debounce.

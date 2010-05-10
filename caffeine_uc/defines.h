@@ -56,7 +56,10 @@
 #define SER_BUF_L 255
 
 // Number of selections
-#define SEL_NUM 8
+#define SEL_NUM 9
+
+// Number of characters on the LCD panels
+#define LCD_CHARS 32
 
 // Reset command for the command processor
 #define RESET_CMD 160
