@@ -204,9 +204,23 @@ void send_button_up(uint8_t button) {
 
 char check_card_data() {
 
-	uint8_t i;
+	uint8_t i, parity_count, parity_mask;
+
 
 	for (i = 0; i < CARDBUF_L; i++) {
+		parity_count = 0;
+
+		for (parity_mask = 1; parity_mask < 0x10; parity_mask <<= 1) {
+			if ((parity_mask & card_data[i]) != 0)
+				parity_count++;
+		}
+		
+
+		parity_count &= 1;
+
+		if ((parity_count == (card_data[i] >> 4)) && (card_data[i] != 0))
+			return 1;
+
 		card_data[i] |= 0x30;
 	}
 
@@ -267,9 +281,6 @@ int main() {
 	DDRB = 0x00;
 	DDRA = 0xff;
 
-	// Enable pullups for inputs - unneeded later in life.  Used for debooging
-//	PORTB = 0xff;
-//	PORTD = 0xfc;
 
 	sei();
 
