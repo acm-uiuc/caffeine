@@ -107,7 +107,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define VERSION_DATA " Cavveine2 v0.2 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
+#define VERSION_DATA " Caffeine2 v0.2 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
 #define CAPABILITY_DATA " CMD: Vvc  RES: CUDAEs"
 
 // Card data globals
