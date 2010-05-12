@@ -1,0 +1,53 @@
+All commands except the reset are ASCII commands.
+Any ID numbers are hex encoded 0-9 A-F.
+
+Commands
+--------
+Reset:  0xA0
+Resets the command processing, abandoning the current command, reverting the
+temporary LCD buffer to what is on the displays.
+
+Ping: P
+Checks for status, the controller will send an ack if it is in a ready state.
+
+Vend: Vn
+Vends from tray n.  Sends ack when the vend has been sent.
+
+Set character: Cnxyc
+Sets the character c on display n with row x and column y.
+
+Set string: Sns[32]
+Sets the display n with a 32 character string s.
+
+Refresh display: R
+Refreshes the display.
+
+Version: v
+Request the version of the caffiene board
+
+Capabilities: c
+Get the valid commands from the board
+
+
+Responses
+---------
+Ack:  A
+Acknowledgement of command
+
+Card read error: E
+One digit of the card data failed validation.
+
+Refresh complete: F
+Display has completed a refresh cycle.
+
+Card data: Cs[32]
+32 character string of card data, ASCII encoded.
+
+String: s[string]
+String data.
+
+Button down: Dn
+Button n is pressed down.
+
+Button up: Un
+Button n is released.
