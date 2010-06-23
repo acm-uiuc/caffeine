@@ -57,8 +57,16 @@ void send_ack();
 void vend(char selection);
 void send_card_data();
 char check_card_data();
-void reset_card_data();
 void send_error();
 void send_string(char *string);
+
+void init_lcd_panels();
+void reset_card_data();
+
+void reset_command_processing();
+
+void refresh_lcd();
+void
+
 
 #endif

@@ -48,12 +48,15 @@
  *
  */
 
+#ifndef _CAF_DEFINES_H
+#define _CAF_DEFINES_H
 
 #define F_CPU 18432000
 #define BAUD_RATE 115200
 
 // Lenght of the serial buffer
-#define SER_BUF_L 255
+#define TX_BUF_L 128
+#define RX_BUF_L 70
 
 // Number of selections
 #define SEL_NUM 9
@@ -68,3 +71,5 @@
 // WARNING:  DO NOT SET THiS LESS THAN THE SERIAL BUFFER!
 // It's worse than crossing the streams on your proton pack!
 #define CARDBUF_L 32
+
+#endif

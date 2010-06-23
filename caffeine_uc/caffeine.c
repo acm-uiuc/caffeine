@@ -49,7 +49,7 @@
  * Now that that's all done...
  *
  * This is the program that goes onto the main microcontroller for the ACM soda
- * machine.  This μC recieves and sends RS-232 commands to the computer, 
+ * machine.  This μC receives and sends RS-232 commands to the computer, 
  * controls vending, sets the LCD strings and their backlight color, monitors
  * button presses and releases, and gets and sends card data.
  *
@@ -98,14 +98,14 @@
  */
 
 // Project specific header files 
-#include "defines.h"
-#include "caffeine.h"
-
 #include <inttypes.h>
 #include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+
+#include "defines.h"
+#include "caffeine.h"
 
 #define VERSION_DATA " Caffeine2 v0.2 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
 #define CAPABILITY_DATA " CMD: Vvc  RES: CUDAEs"
@@ -118,16 +118,24 @@ uint8_t card_bit_counter, card_byte_counter, card_status = 0;
 char current_command;
 
 // Serial transmit buffer globals
-char transmit_buffer[SER_BUF_L];
+char transmit_buffer[TX_BUF_L];
 volatile uint8_t transmit_length;
 uint8_t transmit_index;
 
+// Serial receive buffer
+char receive_buffer[RX_BUF_L];
+unsigned char receive_index;
+
 // LCD panel globals
 volatile uint8_t LCD_flags = 0;
-volatile uint8_t LCD_write_buffer[SEL_NUM][LCD_CHARS];
-volatile uint8_t LCD_output_buffer[SEL_NUM][LCD_CHARS];
-volatile uint8_t LCD_contents_buffer[SEL_NUM][LCD_CHARS];
-volatile uint8_t LCD_custom_chars[SEL_NUM][8][8];
+uint8_t lcd_buffer1[SEL_NUM][LCD_CHARS];
+uint8_t lcd_buffer2[SEL_NUM][LCD_CHARS];
+uint8_t lcd_custom_chars[SEL_NUM][8][8];
+uint8_t **lcd_front_buffer;
+uint8_t **lcd_back_buffer;
+
+// Backlight globals
+uint8_t LED_backlight_values[SEL_NUM];
 
 
 // External interrupt pin 0 ISR, triggered on the card detect rising edge
@@ -163,7 +171,7 @@ ISR(INT1_vect) {
 	// Read the input bit and mask off all but pin PD4, tied to the data line
 	// of the card reader.
 	input_bit = PIND;
-	input_bit = input_bit & 16;
+	input_bit = input_bit & 0x10;
 
 	// Since the data is negated on these type of card readers (high is zero and
 	// low is one), we will set the bit whenever we see Pd4 to be low.
@@ -191,11 +199,11 @@ ISR(INT1_vect) {
 
 }
 
-// Recieve complete ISR on USART0.  Whenever a byte is recieved by USART0 this
+// receive complete ISR on USART0.  Whenever a byte is received by USART0 this
 // ISR is triggered.  
 ISR(USART0_RX_vect) {
 
-	unsigned char input_char;
+	unsigned char input_char, i;
 
 	// Read in the input character
 	input_char = UDR0;
@@ -207,11 +215,7 @@ ISR(USART0_RX_vect) {
 	if (input_char == RESET_CMD) {
 
 		// Dump the current command
-		current_command = 0;
-
-		// Once the LCD panels are used, we will want to sync all the LCD buffers
-		// with what is known to be on the LCDs to prevent spirous changes.
-		// revert_LCD_buffer();
+		reset_command_processing();
 		
 	} else {
 
@@ -236,6 +240,19 @@ ISR(USART0_RX_vect) {
 				case 'c': // capability
 					send_string(CAPABILITY_DATA);
 					break;
+				case 'C':
+					current_command = 'C';
+					receive_index = 0;
+					break
+				case 'S':
+					current_command = 'S';
+					receive_index = 0;
+					break;
+				case 'P':
+					send_ack();
+					break;
+				case 'R';
+					refresh_lcd();
 				default:  // Anything else, set the command to null and break.
 					current_command = 0;
 					break;
@@ -255,6 +272,29 @@ ISR(USART0_RX_vect) {
 					// Done processing the command.
 					current_command = 0;
 					break;
+				case 'C':
+					receive_buffer[receive_index] = input_char;
+					receive_index++;
+					if (recieve_index == 4) {
+						recieve_buffer[0] -= 0x30;
+						i = recieve_buffer[2] - 0x30;
+						i = i + (recieve_buffer[1] - 0x30) * 16;
+						lcd_front_buffer[recieve_buffer[0]][i] = receive_buffer[3];
+						send_ack();
+						current_command = 0;
+					}
+					break;
+				case 'S':
+					receive_buffer[receive_index] = input_char;
+					receive_index++;
+					if (receive_index == 33) {
+						receive_buffer[0] -= 0x30;
+						for(i = 0; i < 32; i++)
+							lcd_front_buffer[receive_buffer[0]][i] = receive_buffer[i + 1];
+						send_ack();
+						current_command = 0;
+					}
+					break;
 				default:  // If the current command is invalid, reset.
 					current_command = 0;
 					break;
@@ -272,7 +312,7 @@ ISR(USART0_TX_vect) {
 
 	// If the index of the next character to be transmitted is less than the
 	// length of the message and the buffer transmit and advance the index.
-	if (transmit_index < SER_BUF_L && transmit_index < transmit_length) {
+	if (transmit_index < TX_BUF_L && transmit_index < transmit_length) {
 		UDR0 = transmit_buffer[transmit_index];
 		transmit_index++;
 
@@ -290,15 +330,12 @@ void vend(char selection) {
 	// Check for validity of the selection
 	if (selection < SEL_NUM) {
 
-		// Spinlock while we are waiting for the LCD to finish writing.
 		uint8_t i;
-		while (LCD_flags != 0)
-			_delay_us(50);
 
 		// Get the PORTC status, clear off PORTC[0:4] and add the selection
 		// in.
 		i = PORTC;
-		i &= 224;
+		i &= 0xe0;
 		i += (selection + 1);
 		PORTC = i;
 
@@ -464,8 +501,8 @@ void send_string(char *string) {
 
 	// Make sure we're not doing anything dumb with the string.
 	length = strlen(string);
-	if (length > SER_BUF_L)
-		length = SER_BUF_L;
+	if (length > TX_BUF_L)
+		length = TX_BUF_L;
 	
 	// copy the string into the buffer, start the transmit
 	strlcpy(transmit_buffer, string, length);
@@ -475,6 +512,50 @@ void send_string(char *string) {
 	transmit_index = 0;
 
 }
+
+void reset_command_processing() {
+
+	receive_index = 0;
+	current_command = 0;
+
+}
+
+void init_lcd_panels() {
+
+	uint8_t i, j;
+
+	lcd_front_buffer = lcd_buffer1;
+	lcd_back_buffer = lcd_buffer2;
+
+	for(i=0; i < SEL_NUM; i++) {
+		for(j=0; j < 32; j++) {
+			lcd_buffer1[i][j] = ' ';
+			lcd_buffer2[i][j] = ' ';
+		}
+	}
+
+	_delay_ms(1);
+
+	PORTA = 0x38;
+	_delay_us(1);
+	PORTC = 0x1f;
+	_delay_us(1);
+	PORTC = 0;
+	_delay_us(40);
+
+	PORTA = 0x0c;
+	_delay_us(1);
+	PORTC = 0x1f;
+	_delay_us(1);
+	PORTC = 0;
+	_delay_us(40);
+
+
+
+
+
+
+
 
 int main() {
 	// Variables for our inputs, iterators,  button status and a bitmask.
@@ -502,8 +583,10 @@ int main() {
 	DDRB = 0x00;
 	DDRA = 0xff;
 
-	// Let's clear out our card data.
+	// Initalize data, LCDs
 	reset_card_data();
+	reset_command_processing();
+	init_lcd_panels();
 
 	// We'd be useless without interrupts.  It may be a good idea to turn them on.
 	sei();

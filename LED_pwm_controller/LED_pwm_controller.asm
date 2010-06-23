@@ -66,10 +66,10 @@
 
 .org $0020
 RESET:
-        ldi r16,high(RAMEND)	; Set stack pointer
-        out SPH,r16
-        ldi r16,low(RAMEND)
-        out SPL,r16
+		ldi r16,high(RAMEND)	; Set stack pointer
+		out SPH,r16
+		ldi r16,low(RAMEND)
+		out SPL,r16
 		cli						; Mask interrupts
 		ldi r16, $04			; Disable pullup resistors
 		out SFIOR, r16

@@ -53,9 +53,13 @@
 
 ; Revision history:
 ;
+; v1.1
+;	- Added a condition that if the inputs are 11111b the LCD enable
+;	  lines will be active.
+;		- mike <mike@tuxnami.org>
 ; v1.0
-;     - Initial code implementation
-;        - mike <mike@tuxnami.org>
+;	- Initial code implementation
+;		- mike <mike@tuxnami.org>
 
 .include "m48def.inc"
 
@@ -64,7 +68,12 @@
 		rjmp RESET			; Reset vector
 
 .org $0020
-RESET:	LDI r16, $00		; Load some constants for init
+RESET:
+		LDI r16, $CF
+		MOV r0, r16
+		LDI r16, $D0
+		MOV r1, r16
+		LDI r16, $00		; Load some constants for init
 		LDI r17, $FF
 		LDI r18, $7F
 		LDI r19, $E0
@@ -162,10 +171,15 @@ poll_loop:					; main program loop
 		NOP
 		NOP
 		NOP
-		NOP
-		NOP
+		SBRC r16, 0
+		RJMP lcd_enable_set
 		OUT PORTB, r16		; Oops, someone done something dum, like putting a
 		OUT PORTC, r16		; value > 18 on the input lines.  Clear outputs, 
 		OUT PORTD, r16		; return to sender.
+		RJMP poll_loop
+lcd_enable_set:
+		OUT PORTB, r0
+		OUT PORTC, r16
+		OUT PORTD, r1
 		RJMP poll_loop
 
