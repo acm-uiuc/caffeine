@@ -92,8 +92,12 @@
  * 			- mike <mike@tuxnami.org>
  *
  * v0.2 -
- *      Added the ability to output strings, capability and version data.
- *          - mike <mike@tuxnami.org>
+ *    Added the ability to output strings, capability and version data.
+ *      - mike <mike@tuxnami.org>
+ *
+ * v0.3 -
+ *		Added LCD handling commands
+ *			- mike <mike@tuxnami.org>
  *
  */
 
@@ -107,8 +111,8 @@
 #include "defines.h"
 #include "caffeine.h"
 
-#define VERSION_DATA " Caffeine2 v0.2 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
-#define CAPABILITY_DATA " CMD: Vvc  RES: CUDAEs"
+#define VERSION_DATA " Caffeine2 v0.3 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
+#define CAPABILITY_DATA " CMD: PCSRVvc  RES: CUDAEFs"
 
 // Card data globals
 char card_data[CARDBUF_L];
@@ -278,7 +282,7 @@ ISR(USART0_RX_vect) {
 					if (recieve_index == 4) {
 						recieve_buffer[0] -= 0x30;
 						i = recieve_buffer[2] - 0x30;
-						i = i + (recieve_buffer[1] - 0x30) * 16;
+						i = i + (recieve_buffer[1] - 0x30) * LCD_CHARS/LCD_LINES;
 						lcd_front_buffer[recieve_buffer[0]][i] = receive_buffer[3];
 						send_ack();
 						current_command = 0;
@@ -289,7 +293,7 @@ ISR(USART0_RX_vect) {
 					receive_index++;
 					if (receive_index == 33) {
 						receive_buffer[0] -= 0x30;
-						for(i = 0; i < 32; i++)
+						for(i = 0; i < LCD_CHARS; i++)
 							lcd_front_buffer[receive_buffer[0]][i] = receive_buffer[i + 1];
 						send_ack();
 						current_command = 0;
@@ -364,6 +368,18 @@ void send_ack() {
 	transmit_index = 0;
 
 }
+
+void send_char(char c) {
+	// Become a turning machine while we wait for the send buffer to clear
+	while (transmit_length != 0)
+		_delay_us(100);
+
+	// Send the letter A, clear the transmit buffer flags.
+	UDR0 = c;
+	transmit_length = 0;
+	transmit_index = 0;
+}
+
 
 // Oops, bad card data.  ERR-OR!
 void send_error() {
@@ -490,7 +506,7 @@ void send_card_data() {
 
 }
 
-// Send a string
+// Send a string over RS-232
 void send_string(char *string) {
 
 	int length = 0;
@@ -505,7 +521,7 @@ void send_string(char *string) {
 		length = TX_BUF_L;
 	
 	// copy the string into the buffer, start the transmit
-	strlcpy(transmit_buffer, string, length);
+	memcpy(transmit_buffer, string, length);
 	UDR0 = 's';
 
 	transmit_length = length;
@@ -513,12 +529,80 @@ void send_string(char *string) {
 
 }
 
-void reset_command_processing() {
+// Reset the command processor, just set the vars to 0
+inline void reset_command_processing() {
 
 	receive_index = 0;
 	current_command = 0;
 
 }
+
+// Send a command to an LCD panel.  LCD 0-8 or 32 for all LCDs.
+inline void lcd_command(char command, char lcd) {
+
+	lcd = lcd & 0x1f;
+	if (lcd != 0x1f)
+		lcd += 10;
+
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) { 
+		PORTA = command;
+		PORTC = lcd & 0x1f;
+		_delay_us(1);
+		PORTC = 0;
+		_delay_us(1);
+	}
+
+}
+
+// Write a character to an LCD panel.  LCD 0-8 or 32 for all LCDs.
+inline void lcd_write(char c, char lcd) {
+
+	lcd = lcd & 0x1f;
+	if (lcd != 0x1f)
+		lcd += 10;
+
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) {
+		PORTA = command;
+		PORTC = lcd & 0x5f;
+		_delay_us(1);
+		PORTC = 0;
+		_delay_us(1);
+	}
+
+}
+
+inline void lcd_home(char lcd) {
+
+	lcd = lcd & 0x1f;
+	if (lcd != 0x1f)
+		lcd += 10;
+
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) {
+		PORTA = 0x02;
+		PORTC = lcd & 0x5f;
+		_delay_us(1);
+		PORTC = 0;
+	}
+	_delay_us(39);
+
+}
+
+inline void lcd_clear(char lcd) {
+
+	lcd = lcd & 0x1f;
+	if (lcd != 0x1f)
+		lcd += 10;
+
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) {
+		PORTA = 0x01;
+		PORTC = lcd & 0x5f;
+		_delay_us(1);
+		PORTC = 0;
+	}
+	_delay_us(39);
+
+}
+
 
 void init_lcd_panels() {
 
@@ -528,34 +612,57 @@ void init_lcd_panels() {
 	lcd_back_buffer = lcd_buffer2;
 
 	for(i=0; i < SEL_NUM; i++) {
-		for(j=0; j < 32; j++) {
+		for(j=0; j < LCD_CHARS; j++) {
 			lcd_buffer1[i][j] = ' ';
 			lcd_buffer2[i][j] = ' ';
 		}
 	}
 
-	_delay_ms(1);
+	_delay_ms(15);
 
-	PORTA = 0x38;
-	_delay_us(1);
-	PORTC = 0x1f;
-	_delay_us(1);
-	PORTC = 0;
-	_delay_us(40);
+	lcd_command(0x38, 32);
+	_delay_us(38);
+	lcd_command(0x0c, 32);
+	_delay_us(38);
+	lcd_command(0x04, 32);
+	_delay_us(38);
 
-	PORTA = 0x0c;
-	_delay_us(1);
-	PORTC = 0x1f;
-	_delay_us(1);
-	PORTC = 0;
-	_delay_us(40);
+	lcd_clear(32);
+	lcd_home(32);
 
+	refresh_lcd();
+	lcd_home();
 
+}
 
+void refresh_lcd() {
 
+	uint8_t i, j, k, offset;
 
+	lcd_home();
 
+	cli();
+	memcpy(lcd_back_buffer, lcd_front_buffer, SEL_NUM * LCD_CHARS);
+	sei();
 
+	send_ack();
+
+	for (j = 0; j < LCD_LINES; j++) {
+		offset = j * ( LCD_CHARS/LCD_LINES );
+		for (k = 0; k < (LCD_CHARS/LCD_LINES); k++) {
+			for (i = 0; i < SEL_NUM; i++) {
+				lcd_write(lcd_back_buffer[i][k + offset], i);
+				_delay_us(1);
+			}
+			_delay_us(20);
+		}
+		lcd_command(0xc0, 32);
+		_delay_us(38);
+	}
+
+	send_char('F');
+
+}
 
 int main() {
 	// Variables for our inputs, iterators,  button status and a bitmask.

@@ -43,7 +43,7 @@
 ;
 ; Now that that's all done...
 ;
-; Input pins are PD[0:5]
+; Input pins are PD[0:4]
 ; If all inputs are 0 or above 18 the outputs are 0.  Otherwise
 ; the selected output is 1 and the remaining are zero.
 ; Outputs are assigned from PC[6] rotating counterclockwise

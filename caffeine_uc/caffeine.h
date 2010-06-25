@@ -60,10 +60,16 @@ char check_card_data();
 void send_error();
 void send_string(char *string);
 
+inline void lcd_command(char command, char lcd);
+inline void lcd_write(char c, char lcd);
+
+inline void lcd_home(char lcd);
+inline void lcd_clear(char lcd);
+
 void init_lcd_panels();
 void reset_card_data();
 
-void reset_command_processing();
+inline void reset_command_processing();
 
 void refresh_lcd();
 void

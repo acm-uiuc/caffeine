@@ -63,12 +63,13 @@
 
 // Number of characters on the LCD panels
 #define LCD_CHARS 32
+#define LCD_LINES 2
 
 // Reset command for the command processor
 #define RESET_CMD 160
 
 // Length of the card data buffer
-// WARNING:  DO NOT SET THiS LESS THAN THE SERIAL BUFFER!
+// WARNING:  DO NOT SET THIS LESS THAN THE SERIAL BUFFER!
 // It's worse than crossing the streams on your proton pack!
 #define CARDBUF_L 32
 

@@ -28,6 +28,9 @@ Request the version of the caffiene board
 Capabilities: c
 Get the valid commands from the board
 
+Set backlight color: Bnlc
+Set the color of the LED l (R G or B) on LCD n with color value c (0-3)
+
 
 Responses
 ---------
