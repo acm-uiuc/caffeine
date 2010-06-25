@@ -221,8 +221,8 @@ set_lcd:
 		OR r23, r22
 		OUT PORTB, r23
 
-		LDI r22, $EO
-		IN r23, PINB
+		LDI r22, $E0
+		IN r23, PIND
 		OR r23, r22
-		OUT PORTB, r23
+		OUT PORTD, r23
 		RJMP poll_loop
