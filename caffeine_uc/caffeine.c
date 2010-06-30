@@ -86,29 +86,34 @@
  *
  * Version history:
  *
- * v0.1 -
- * 		Implemented vend selection, button press/release, card input, card data
- * 		checking, serial I/O.
+ * v0.4 -
+ * 		Updated to use the toggle-based selection microcontroller for the
+ * 		vend/LCD selection.
  * 			- mike <mike@tuxnami.org>
- *
- * v0.2 -
- *    Added the ability to output strings, capability and version data.
- *      - mike <mike@tuxnami.org>
  *
  * v0.3 -
  *		Added LCD handling commands
  *			- mike <mike@tuxnami.org>
  *
+ * v0.2 -
+ *    Added the ability to output strings, capability and version data.
+ *      - mike <mike@tuxnami.org>
+ *
+ * v0.1 -
+ * 		Implemented vend selection, button press/release, card input, card data
+ * 		checking, serial I/O.
+ * 			- mike <mike@tuxnami.org>
+ *
  */
 
 // Project specific header files 
+#include "defines.h"
 #include <inttypes.h>
 #include <string.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#include "defines.h"
 #include "caffeine.h"
 
 #define VERSION_DATA " Caffeine2 v0.3 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
@@ -116,30 +121,28 @@
 
 // Card data globals
 char card_data[CARDBUF_L];
-uint8_t card_bit_counter, card_byte_counter, card_status = 0;
+unsigned char card_bit_counter, card_byte_counter, card_status = 0;
 
 // Command processing globals
 char current_command;
 
 // Serial transmit buffer globals
 char transmit_buffer[TX_BUF_L];
-volatile uint8_t transmit_length;
-uint8_t transmit_index;
+volatile unsigned char transmit_length;
+unsigned char transmit_index;
 
 // Serial receive buffer
 char receive_buffer[RX_BUF_L];
 unsigned char receive_index;
 
 // LCD panel globals
-volatile uint8_t LCD_flags = 0;
-uint8_t lcd_buffer1[SEL_NUM][LCD_CHARS];
-uint8_t lcd_buffer2[SEL_NUM][LCD_CHARS];
-uint8_t lcd_custom_chars[SEL_NUM][8][8];
-uint8_t **lcd_front_buffer;
-uint8_t **lcd_back_buffer;
+volatile unsigned char LCD_flags = 0;
+unsigned char lcd_back_buffer[SEL_NUM][LCD_CHARS];
+unsigned char lcd_front_buffer[SEL_NUM][LCD_CHARS];
+unsigned char lcd_custom_chars[SEL_NUM][8][8];
 
 // Backlight globals
-uint8_t LED_backlight_values[SEL_NUM];
+unsigned char LED_backlight_values[SEL_NUM];
 
 
 // External interrupt pin 0 ISR, triggered on the card detect rising edge
@@ -164,7 +167,7 @@ ISR(INT0_vect) {
 ISR(INT1_vect) {
 
 	// Input data
-	uint8_t input_bit = 0;
+	unsigned char input_bit = 0;
 
 	// card_bit_counter is a counter/mask for which bit we are reading.  if it
 	// is set to 1, the first bit, clear out the byte in the card data.
@@ -207,7 +210,7 @@ ISR(INT1_vect) {
 // ISR is triggered.  
 ISR(USART0_RX_vect) {
 
-	unsigned char input_char, i;
+	unsigned char input_char, i, j;
 
 	// Read in the input character
 	input_char = UDR0;
@@ -247,15 +250,19 @@ ISR(USART0_RX_vect) {
 				case 'C':
 					current_command = 'C';
 					receive_index = 0;
-					break
+					break;
 				case 'S':
 					current_command = 'S';
+					receive_index = 0;
+					break;
+				case 'B':
+					current_command = 'B';
 					receive_index = 0;
 					break;
 				case 'P':
 					send_ack();
 					break;
-				case 'R';
+				case 'R':
 					refresh_lcd();
 				default:  // Anything else, set the command to null and break.
 					current_command = 0;
@@ -278,18 +285,73 @@ ISR(USART0_RX_vect) {
 					break;
 				case 'C':
 					receive_buffer[receive_index] = input_char;
+					if (receive_index == 0 && (input_char > (0x30 + SEL_NUM) || input_char < 0x30) ) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
+					if (receive_index == 1 && (input_char > (0x30 + LCD_LINES) || input_char < 0x30) ) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
+					if (receive_index == 2 && (input_char > (0x30 + LCD_CHARS/LCD_LINES) || input_char < 0x30) ) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
 					receive_index++;
-					if (recieve_index == 4) {
-						recieve_buffer[0] -= 0x30;
-						i = recieve_buffer[2] - 0x30;
-						i = i + (recieve_buffer[1] - 0x30) * LCD_CHARS/LCD_LINES;
-						lcd_front_buffer[recieve_buffer[0]][i] = receive_buffer[3];
+					if (receive_index == 4) {
+						receive_buffer[0] -= 0x30;
+						i = receive_buffer[2] - 0x30;
+						i = i + (receive_buffer[1] - 0x30) * LCD_CHARS/LCD_LINES;
+						lcd_front_buffer[receive_buffer[0]][i] = receive_buffer[3];
 						send_ack();
 						current_command = 0;
 					}
 					break;
+				case 'B':
+					receive_buffer[receive_index] = input_char;
+					if (receive_index == 0 && (input_char > (0x30 + SEL_NUM) || input_char < 0x30) ) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
+					if (receive_index == 1 && (input_char > (0x32) || input_char < 0x30)) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
+					if (receive_index == 2 && (input_char > 0x33 || input_char < 0x30) ) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
+					receive_index++;
+					if (receive_index == 3) {
+						receive_buffer[0] -= 0x30;
+						receive_buffer[1] -= 0x30;
+						receive_buffer[2] -= 0x30;
+						receive_buffer[2] >>= 5;
+						i = receive_buffer[0] * 3 + receive_buffer[1];
+						i = i | recieve_buffer[2];
+						cli();
+						j = PINB;
+						PORTB = i;
+						PORTD = PORTD | 0x80;
+						_delay_us(10);
+						PORTD = PORTD & 0x7f;
+						PORTB = j;
+						sei();
+					}
+					break;
 				case 'S':
 					receive_buffer[receive_index] = input_char;
+					if (receive_index == 0 && (input_char > (0x30 + SEL_NUM) || input_char < 0x30) ) {
+						reset_command_processing();
+						send_error();
+						break;
+					}
 					receive_index++;
 					if (receive_index == 33) {
 						receive_buffer[0] -= 0x30;
@@ -305,9 +367,7 @@ ISR(USART0_RX_vect) {
 
 			}
 		}
-
 	}
-
 }
 
 // Transmit complete ISR vector for USART0.  Here we will send any additional
@@ -325,32 +385,46 @@ ISR(USART0_TX_vect) {
 		transmit_index = 0;
 		transmit_length = 0;
 	}
-
 }
 
 // Vend a selection.
-void vend(char selection) {
+void vend(unsigned char selection) {
 
 	// Check for validity of the selection
 	if (selection < SEL_NUM) {
 
-		uint8_t i;
-
-		// Get the PORTC status, clear off PORTC[0:4] and add the selection
-		// in.
-		i = PORTC;
-		i &= 0xe0;
-		i += (selection + 1);
-		PORTC = i;
-
-		// Wait half a second and then take out the selection.
-		_delay_ms(500);
-		i -= (selection + 1);
-		PORTC = i;
+		toggle_select(selection + 1);
+		// Wait a second and a half and then take out the selection.
+		_delay_ms(1500);
+		toggle_select(selection + 1);
 
 		// Give the computer an ack that the soda has been vended.  One day
 		// we may add a jam ('lo jams) detection in.
 		send_ack();
+
+	}
+}
+
+void toggle_select(unsigned char selection) {
+
+	unsigned char i;
+
+	if (selection < 32) {
+
+		while (PINC & 0x1f) 
+			_delay_us(2);
+
+		cli();
+		i = PINC;
+		PORTC = i + (selection + 1);
+		_delay_us(2);
+		PORTC = i;
+
+		if (selection > 18)
+			_delay_us(25);
+		else
+			_delay_us(4);
+		sei();
 
 	}
 }
@@ -396,7 +470,7 @@ void send_error() {
 }
 
 // Someone just pushed my buttons!  Send the button press.
-void send_button_down(uint8_t button) {
+void send_button_down(unsigned char button) {
 
 	// ROUND AND ROUND WE GO!  WHEN THE BUFFER IS CLEAR, THAT'S WHEN WE GO!
 	while (transmit_length != 0)
@@ -414,7 +488,7 @@ void send_button_down(uint8_t button) {
 
 // Aw, they stopped pushing our buttons. :(  Guess we need to let
 // the computer know.
-void send_button_up(uint8_t button) {
+void send_button_up(unsigned char button) {
 
 	// Spin spin spin while we wait for the talking stick.
 	while (transmit_length != 0)
@@ -432,7 +506,7 @@ void send_button_up(uint8_t button) {
 // Did someone screw up a swipe?  (how hard is it to sipe, really?)
 char check_card_data() {
 
-	uint8_t i, parity_count, parity_mask;
+	unsigned char i, parity_count, parity_mask;
 
 	// Loop for the number of bytes in the card buffer.  In the loop
 	// check the parity (odd) on the datas.
@@ -468,7 +542,7 @@ char check_card_data() {
 // the trunk.
 void reset_card_data() {
 
-	uint8_t i;
+	unsigned char i;
 
 	// Throw some bleach on the buffer and wipe it down.
 	for (i = 0; i < CARDBUF_L; i++) {
@@ -495,7 +569,7 @@ void send_card_data() {
 	// with the defines, DO NOT make the transmit buffer smaller than the card buffer.
 	// Doing so would be stupid.  About as stupid as jamming a rusty spoon into one's
 	// eye.
-	uint8_t i;
+	unsigned char i;
 	for(i = 0; i < CARDBUF_L; i++)
 		transmit_buffer[i] = card_data[i];
 
@@ -537,38 +611,50 @@ inline void reset_command_processing() {
 
 }
 
-// Send a command to an LCD panel.  LCD 0-8 or 32 for all LCDs.
+// Send a command to an LCD panel.  LCD 0-8 or 31 for all LCDs.
 inline void lcd_command(char command, char lcd) {
 
 	lcd = lcd & 0x1f;
 	if (lcd != 0x1f)
 		lcd += 10;
 
-	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) { 
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 31) { 
 		PORTA = command;
-		PORTC = lcd & 0x1f;
-		_delay_us(1);
-		PORTC = 0;
-		_delay_us(1);
+		if (lcd == 31) {
+			toggle_select(31);
+			_delay_us(1);
+			toggle_select(30);
+			_delay_us(1);
+		} else {
+			toggle_select(lcd);
+			_delay_us(1);
+			toggle_select(lcd);
+			_delay_us(1);
+		}
 	}
-
 }
 
-// Write a character to an LCD panel.  LCD 0-8 or 32 for all LCDs.
+// Write a character to an LCD panel.  LCD 0-8 or 31 for all LCDs.
 inline void lcd_write(char c, char lcd) {
 
 	lcd = lcd & 0x1f;
 	if (lcd != 0x1f)
 		lcd += 10;
 
-	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) {
-		PORTA = command;
-		PORTC = lcd & 0x5f;
-		_delay_us(1);
-		PORTC = 0;
-		_delay_us(1);
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 31) {
+		PORTA = c;
+		if (lcd == 31) {
+			toggle_select(31);
+			_delay_us(1);
+			toggle_select(30);
+			_delay_us(1);
+		} else {
+			toggle_select(lcd);
+			_delay_us(1);
+			toggle_select(lcd);
+			_delay_us(1);
+		}
 	}
-
 }
 
 inline void lcd_home(char lcd) {
@@ -577,14 +663,21 @@ inline void lcd_home(char lcd) {
 	if (lcd != 0x1f)
 		lcd += 10;
 
-	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) {
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 31) {
 		PORTA = 0x02;
-		PORTC = lcd & 0x5f;
-		_delay_us(1);
-		PORTC = 0;
+		if (lcd == 31) {
+			toggle_select(31);
+			_delay_us(1);
+			toggle_select(30);
+			_delay_us(1);
+		} else {
+			toggle_select(lcd);
+			_delay_us(1);
+			toggle_select(lcd);
+			_delay_us(1);
+		}
 	}
 	_delay_us(39);
-
 }
 
 inline void lcd_clear(char lcd) {
@@ -593,53 +686,57 @@ inline void lcd_clear(char lcd) {
 	if (lcd != 0x1f)
 		lcd += 10;
 
-	if ( (lcd >= 10 && lcd <= 18) && lcd == 32) {
-		PORTA = 0x01;
-		PORTC = lcd & 0x5f;
-		_delay_us(1);
-		PORTC = 0;
+	if ( (lcd >= 10 && lcd <= 18) && lcd == 31) {
+		PORTA = 0x01;	
+		if (lcd == 31) {
+			toggle_select(31);
+			_delay_us(1);
+			toggle_select(30);
+			_dealy_us(1);
+		} else {
+			toggle_select(lcd);
+			_delay_us(1);
+			toggle_select(lcd);
+			_dalay_us(1);
+		}
 	}
 	_delay_us(39);
-
 }
 
 
 void init_lcd_panels() {
 
-	uint8_t i, j;
-
-	lcd_front_buffer = lcd_buffer1;
-	lcd_back_buffer = lcd_buffer2;
+	unsigned char i, j;
 
 	for(i=0; i < SEL_NUM; i++) {
 		for(j=0; j < LCD_CHARS; j++) {
-			lcd_buffer1[i][j] = ' ';
-			lcd_buffer2[i][j] = ' ';
+			lcd_front_buffer[i][j] = ' ';
+			lcd_back_buffer[i][j] = ' ';
 		}
 	}
 
 	_delay_ms(15);
 
-	lcd_command(0x38, 32);
+	lcd_command(0x38, 31);
 	_delay_us(38);
-	lcd_command(0x0c, 32);
+	lcd_command(0x0c, 31);
 	_delay_us(38);
-	lcd_command(0x04, 32);
+	lcd_command(0x04, 31);
 	_delay_us(38);
 
-	lcd_clear(32);
-	lcd_home(32);
+	lcd_clear(31);
+	lcd_home(31);
 
 	refresh_lcd();
-	lcd_home();
+	lcd_home(31);
 
 }
 
 void refresh_lcd() {
 
-	uint8_t i, j, k, offset;
+	unsigned char i, j, k, offset;
 
-	lcd_home();
+	lcd_home(31);
 
 	cli();
 	memcpy(lcd_back_buffer, lcd_front_buffer, SEL_NUM * LCD_CHARS);
@@ -656,7 +753,7 @@ void refresh_lcd() {
 			}
 			_delay_us(20);
 		}
-		lcd_command(0xc0, 32);
+		lcd_command(0xc0, 31);
 		_delay_us(38);
 	}
 
@@ -666,13 +763,13 @@ void refresh_lcd() {
 
 int main() {
 	// Variables for our inputs, iterators,  button status and a bitmask.
-	uint8_t input_l, input_h, i;
+	unsigned char input_l, input_h, i;
 	uint16_t input;
 	uint16_t button_status = 0;
 	uint16_t  mask;
 	
 	// Array for debouncing.
-	uint8_t button_debounce[SEL_NUM];
+	unsigned char button_debounce[SEL_NUM];
 
 	// RS-232 setup.  115200kbps, interrups for RX and TX complete, enable TX and RX.
 	UCSR0B = _BV(RXCIE0) | _BV(TXCIE0) | _BV(RXEN0) | _BV(TXEN0);

@@ -54,11 +54,17 @@
 #define CAFFEINE_H
 
 void send_ack();
-void vend(char selection);
+void vend(unsigned char selection);
 void send_card_data();
 char check_card_data();
 void send_error();
 void send_string(char *string);
+void send_char(char c);
+
+void send_button_down(unsigned char button);
+void send_button_up(unsigned char button);
+
+void toggle_select(unsigned char selection);
 
 inline void lcd_command(char command, char lcd);
 inline void lcd_write(char c, char lcd);
@@ -72,7 +78,5 @@ void reset_card_data();
 inline void reset_command_processing();
 
 void refresh_lcd();
-void
-
 
 #endif

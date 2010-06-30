@@ -9,3 +9,4 @@
 caffeine_uc/default/Makefile
 *.lss
 *.tmp
+*.sw?
