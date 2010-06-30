@@ -10,3 +10,8 @@ caffeine_uc/default/Makefile
 *.lss
 *.tmp
 *.sw?
+*~
+*-
+*.backup
+*.cmd
+
