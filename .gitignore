@@ -14,4 +14,4 @@ caffeine_uc/default/Makefile
 *-
 *.backup
 *.cmd
-
+*.net
