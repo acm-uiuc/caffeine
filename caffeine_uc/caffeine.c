@@ -247,22 +247,22 @@ ISR(USART0_RX_vect) {
 				case 'c': // capability
 					send_string(CAPABILITY_DATA);
 					break;
-				case 'C':
+				case 'C': // Set character on LCD
 					current_command = 'C';
 					receive_index = 0;
 					break;
-				case 'S':
+				case 'S': // Set string on LCD
 					current_command = 'S';
 					receive_index = 0;
 					break;
-				case 'B':
+				case 'B': // Set backlight
 					current_command = 'B';
 					receive_index = 0;
 					break;
-				case 'P':
+				case 'P': // Ping
 					send_ack();
 					break;
-				case 'R':
+				case 'R': // Refresh
 					refresh_lcd();
 				default:  // Anything else, set the command to null and break.
 					current_command = 0;
