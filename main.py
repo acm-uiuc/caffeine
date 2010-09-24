@@ -7,6 +7,15 @@ from PyQt4 import QtGui,QtSvg
 actually_do_serial_stuff = True
 actually_do_database_stuff = True
 
+class ClearTimeout(threading.Thread):
+	def __init__(self, parent, timeout):
+		threading.Thread.__init__(self)
+		self.parent = parent
+		self.timeout = timeout
+	def run(self):
+		time.sleep(self.timeout)
+		self.parent.gui.disp("Welcome to Caffeine!<br />Please scan your card.")
+
 class SerialHandler(threading.Thread):
 	def __init__(self, parent):
 		threading.Thread.__init__(self)
@@ -44,17 +53,17 @@ class SerialHandler(threading.Thread):
 						print "[debug] Card data:", cardData
 						if cardData[0] != ';':
 							print "[debug] Card is invalid (no ;)"
-							self.parent.gui.dispError("Could not read card.<br />Try again.")
+							self.cardError("Could not read card.<br />Try again.")
 							continue
 						if cardData[17] != '=':
 							print "[debug] Card is invalid (17 != '=')"
-							self.parent.gui.dispError("Could not read card.<br />Try again.")
+							self.cardError("Could not read card.<br />Try again.")
 							continue
 						print "[debug] Card seems valid:", cardData[1:17]
 						cardData = cardData[5:14]
 					except:
 						print "[debug] Bombed somewhere reading card id."
-						self.parent.gui.dispError("Could not read card.<br />Try again.")
+						self.cardError("Could not read card.<br />Try again.")
 						continue
 					print "[debug] UIN is:", cardData
 					self.parent.db_integrate.query("SELECT * FROM `users` WHERE uin='%s'" % cardData)
@@ -63,7 +72,7 @@ class SerialHandler(threading.Thread):
 					if len(user) > 0:
 						user = user[0]
 					else:
-						self.parent.gui.dispError("Card was read, but I don't know who you are.<br />Try again.")
+						self.cardError("Card was read, but I don't know who you are.<br />Try again.")
 						continue;
 					self.parent.db_integrate.query("SELECT * FROM `vending` WHERE uid=%s" % user['uid'])
 					vending_result = self.parent.db_integrate.store_result()
@@ -71,14 +80,18 @@ class SerialHandler(threading.Thread):
 					if len(vending) > 0:
 						vending = vending[0]
 					else:
-						self.parent.gui.dispError("I know who you are, but the vending databases doesn't.<br />Sorry.")
+						self.cardError("I know who you are, but the vending databases doesn't.<br />Sorry.")
 						continue
 					print "You have $%.2f." % vending['balance']
-					self.parent.gui.status.setText("<center><span style='font-size: 24px;'><b>%s %s</b><br /><b>Balance: </b>$%.2f</span></center>" % (user['first_name'],user['last_name'],vending['balance']))
+					self.user = user
+					self.parent.gui.disp("<b>%s %s</b><br /><b>Balance: </b>$%.2f" % (user['first_name'],user['last_name'],vending['balance']))
 					# Inform the interface.
 				elif incoming[0] == 'E':
 					print "[debug] Card read failure (try again)"
 					self.parent.gui.dispError("Could not read card.<br />Try again.")
+	def cardError(self, message):
+		self.dispError(message)
+		self.parent.user = None
 class CaffeineTool:
 	def __init__(self):
 		global actually_do_serial_stuff, actually_do_database_stuff
@@ -86,6 +99,7 @@ class CaffeineTool:
 		self.db = None
 		self.se = None
 		self.gui = None
+		self.user = None
 		if actually_do_database_stuff:
 			self.db_integrate = MySQLdb.connect("db1.acm.uiuc.edu","soda","m568EXUFS")
 			self.db_integrate.select_db("acm_integrate")
@@ -115,6 +129,7 @@ class CaffeineTool:
 		print "[debug] Sending reset."
 		if actually_do_serial_stuff:
 			self.se.write("\xa0")
+print "[debug] Welcome to Caffeine."
 Caffeine = CaffeineTool()
 
 class CaffeineWindow():
@@ -127,11 +142,16 @@ class CaffeineWindow():
 		self.status = QtGui.QLabel("<center>Welcome to Caffeine!</center>")
 		self.main_window.setCentralWidget(self.status)
 		self.main_window.show()
+		print "[debug] GUI is running."
 	def dispError(self, error):
 		self.status.setText("<center><span style='font-size: 24px; color: #FF0000;'>%s</span></center>" % error)
+		ClearTimeout(self.caffeine, 3).start()
+	def disp(self, message):
+		self.status.setText("<center><span style='font-size: 24px;'>%s</span></center>" % message)
 	def drawStuff(self):
 		pass
 
+print "[debug] Starting GUI..."
 Caffeine.gui = CaffeineWindow(Caffeine)
 Caffeine.gui.app.exec_()
 print "[debug] GUI has exited, killing serial..."
