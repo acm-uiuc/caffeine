@@ -46,6 +46,15 @@ class SerialDevice():
 		else:
 			print "[simulator]", data
 
+class TrayContent():
+	def __init__(self, tray, soda):
+		self.name = soda['name']
+		self.quantity = tray['qty']
+		self.price = tray['price']
+		self.soda_id = tray['sid']
+		self.calories = soda['calories']
+		self.caffeine = soda['caffeine']
+		self.dispensed = soda['dispensed']
 
 # ClearTimeout(caeffineInstance, timeout).start() ...
 # Clear the screen and reset the state.
@@ -158,20 +167,37 @@ class CaffeineTool:
 			print "[debug] Ignorning (not ready for a button press)"
 		elif self.state == State.Authenticated:
 			print "[debug] Users wants to vend from tray %d." % button
-			self.gui.disp("Press button again to vend $TRAY_CONTENTS")
 			self.state = State.Confirm
 			self.button = button
+			self.db_soda.query("SELECT * FROM `trays` WHERE tid=%s" % button)
+			tray_result = self.db_soda.store_result()
+			try:
+				tray = tray_result.fetch_row(how=1)[0]
+			except:
+				self.state = State.Authenticated
+				self.gui.disp("... What?")
+				return
+			self.db_soda.query("SELECT * FROM `sodas` WHERE sid=%d" % int(tray['sid']))
+			soda_result = self.db_soda.store_result()
+			soda = soda_result.fetch_row(how=1)[0]
+			self.trayContents = TrayContent(tray,soda)
+			#print soda
+			print self.trayContents.quantity
+			if (self.trayContents.quantity < 1):
+				self.gui.disp("This slot is empty.<br />It used to be %s.<br />Select another item." % self.trayContents.name)
+				self.state = State.Authenticated
+			else:
+				self.gui.disp("You have selected slot %d.<br />This is %s.<br />Press button %d again to vend." % (button, soda['name'], button))
 		elif self.state == State.Confirm:
 			if self.button == button:
 				print "[debug] User has confirmed, vend tray %d." % button
-				self.gui.disp("Vending $TRAY_CONTENTS...")
+				self.gui.disp("Vending %s..." % self.trayContents.name)
 				self.state = State.Vended
 				self.vend(button)
 			else:
 				print "[debug] User has changed request to tray %d." % button
-				self.gui.disp("Press button again to vend $TRAY_CONTENTS")
-				self.state = State.Confirm
-				self.button = button
+				self.state = State.Authenticated
+				self.buttonPress(button)
 		elif self.state == State.Vended:
 			self.state = State.Authenticated
 			self.buttonPress(button)
