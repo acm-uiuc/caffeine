@@ -2,7 +2,7 @@
 # New Caffeine Interface
 
 import serial, threading, MySQLdb, time, sys
-from PyQt4 import QtGui,QtSvg
+from PyQt4 import QtGui,QtSvg,QtCore
 
 actually_do_serial_stuff = True
 
@@ -185,10 +185,20 @@ class CaffeineWindow():
 		self.main_window.resize(1280,1024)
 		self.main_window.setWindowTitle('Caffeine')
 		self.status = QtGui.QLabel("<center>Initializing...</center>")
-		self.main_window.setCentralWidget(self.status)
+		self.closeButton = QtGui.QPushButton("*DEBUG* Exit GUI *DEBUG*")
+		self.app.connect(self.closeButton, QtCore.SIGNAL('clicked()'), self.closeButton_pressed)
+		self.vbox = QtGui.QVBoxLayout()
+		self.vbox.addWidget(self.status)
+		self.vbox.addWidget(self.closeButton)
+		self.cwidget = QtGui.QWidget()
+		self.cwidget.setLayout(self.vbox)
+		self.main_window.setCentralWidget(self.cwidget)
 		self.main_window.show()
 		ClearTimeout(self.caffeine, 1).start()
 		print "[debug] GUI is running."
+	def closeButton_pressed(self):
+		print "[debug] Exiting!"
+		self.app.exit()
 	def dispError(self, error):
 		self.status.setText("<center><span style='font-size: 24px; color: #FF0000;'>%s</span></center>" % error)
 		ClearTimeout(self.caffeine, 3).start()
