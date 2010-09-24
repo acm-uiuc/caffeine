@@ -182,7 +182,7 @@ class CaffeineWindow():
 		self.caffeine = caffeine_instance
 		self.app = QtGui.QApplication(sys.argv)
 		self.main_window = QtGui.QMainWindow()
-		self.main_window.resize(640, 480)
+		self.main_window.resize(1280,1024)
 		self.main_window.setWindowTitle('Caffeine')
 		self.status = QtGui.QLabel("<center>Initializing...</center>")
 		self.main_window.setCentralWidget(self.status)
