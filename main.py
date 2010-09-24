@@ -139,9 +139,10 @@ class CaffeineWindow():
 		self.main_window = QtGui.QMainWindow()
 		self.main_window.resize(640, 480)
 		self.main_window.setWindowTitle('Caffeine')
-		self.status = QtGui.QLabel("<center>Welcome to Caffeine!</center>")
+		self.status = QtGui.QLabel("<center>Initializing...</center>")
 		self.main_window.setCentralWidget(self.status)
 		self.main_window.show()
+		ClearTimeout(self.caffeine, 1).start()
 		print "[debug] GUI is running."
 	def dispError(self, error):
 		self.status.setText("<center><span style='font-size: 24px; color: #FF0000;'>%s</span></center>" % error)
