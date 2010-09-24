@@ -5,7 +5,6 @@ import serial, threading, MySQLdb, time, sys
 from PyQt4 import QtGui,QtSvg
 
 actually_do_serial_stuff = True
-actually_do_database_stuff = True
 
 # System states
 class State():
@@ -106,7 +105,7 @@ class SerialHandler(threading.Thread):
 		self.parent.user = None
 class CaffeineTool:
 	def __init__(self):
-		global actually_do_serial_stuff, actually_do_database_stuff
+		global actually_do_serial_stuff
 		self.serialHander = None
 		self.db = None
 		self.se = None
@@ -114,15 +113,18 @@ class CaffeineTool:
 		self.user = None
 		self.state = State.Initializing
 		self.button = -1
-		if actually_do_database_stuff:
-			self.db_integrate = MySQLdb.connect("db1.acm.uiuc.edu","soda","m568EXUFS")
-			self.db_integrate.select_db("acm_integrate")
-			self.db_soda = MySQLdb.connect("db1.acm.uiuc.edu", "soda", "m568EXUFS")
-			self.db_soda.select_db("soda")
+		self.db_integrate = MySQLdb.connect("db1.acm.uiuc.edu","soda","m568EXUFS")
+		self.db_integrate.select_db("acm_integrate")
+		self.db_soda = MySQLdb.connect("db1.acm.uiuc.edu", "soda", "m568EXUFS")
+		self.db_soda.select_db("soda")
 		if actually_do_serial_stuff:
-			self.se = serial.Serial('/dev/ttyUSB0',115200) # hello thar
-			self.serialHandler = SerialHandler(self)
-			self.serialHandler.start()
+			try:
+				self.se = serial.Serial('/dev/ttyUSB0',115200) # hello thar
+				self.serialHandler = SerialHandler(self)
+				self.serialHandler.start()
+			except:
+				print "[debug] Could not initialize serial. Entering simulation mode."
+				actually_do_serial_stuff = False
 		self.state = State.Waiting
 	def buttonPress(self, button):
 		print "[debug] Button %d was pressed." % button
@@ -191,6 +193,7 @@ print "[debug] Starting GUI..."
 Caffeine.gui = CaffeineWindow(Caffeine)
 Caffeine.gui.app.exec_()
 print "[debug] GUI has exited, killing serial..."
-Caffeine.serialHandler.is_running = False
-Caffeine.serialHandler.join()
+if actually_do_serial_stuff:
+	Caffeine.serialHandler.is_running = False
+	Caffeine.serialHandler.join()
 print "[debug] Caffeine is terminating."
