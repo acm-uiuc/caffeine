@@ -7,6 +7,16 @@ from PyQt4 import QtGui,QtSvg
 actually_do_serial_stuff = True
 actually_do_database_stuff = True
 
+# System states
+class State():
+	Initializing = -1
+	Waiting = 0
+	Authenticated = 1
+	Confirm = 2
+	Vended = 3
+
+# ClearTimeout(caeffineInstance, timeout).start() ...
+# Clear the screen and reset the state.
 class ClearTimeout(threading.Thread):
 	def __init__(self, parent, timeout):
 		threading.Thread.__init__(self)
@@ -14,6 +24,7 @@ class ClearTimeout(threading.Thread):
 		self.timeout = timeout
 	def run(self):
 		time.sleep(self.timeout)
+		self.parent.state = State.Waiting
 		self.parent.gui.disp("Welcome to Caffeine!<br />Please scan your card.")
 
 class SerialHandler(threading.Thread):
@@ -39,6 +50,7 @@ class SerialHandler(threading.Thread):
 						print "[debug] Button down: This isn't a number..."
 						continue
 					print "[debug] Button down:", str(buttonId)
+					self.parent.buttonPress(buttonId)
 				elif incoming[0] == 'U':
 					try:
 						buttonId = int(incoming[1:])
@@ -100,6 +112,8 @@ class CaffeineTool:
 		self.se = None
 		self.gui = None
 		self.user = None
+		self.state = State.Initializing
+		self.button = -1
 		if actually_do_database_stuff:
 			self.db_integrate = MySQLdb.connect("db1.acm.uiuc.edu","soda","m568EXUFS")
 			self.db_integrate.select_db("acm_integrate")
@@ -109,6 +123,27 @@ class CaffeineTool:
 			self.se = serial.Serial('/dev/ttyUSB0',115200) # hello thar
 			self.serialHandler = SerialHandler(self)
 			self.serialHandler.start()
+		self.state = State.Waiting
+	def buttonPress(self, button):
+		print "[debug] Button %d was pressed." % button
+		if self.state == State.Waiting:
+			print "[debug] Ignorning (not ready for a button press)"
+		elif self.state == State.Authenticated:
+			print "[debug] Users wants to vend from tray %d." % button
+			self.gui.disp("Press button again to vend $TRAY_CONTENTS")
+			self.state = State.Confirm
+			self.button = button
+		elif self.state == State.Confirm:
+			if self.button == button:
+				print "[debug] User has confirmed, vend tray %d." % button
+				self.gui.disp("Vending $TRAY_CONTENTS...")
+				self.state = Self.Vended
+				self.vend(button)
+			else:
+				print "[debug] User has changed request to tray %d." % button
+				self.gui.disp("Press button again to vend $TRAY_CONTENTS")
+				self.state = State.Confirm
+				self.button = button
 	def vend(self, tray):
 		print "[debug] Sending: V" + str(tray)
 		if actually_do_serial_stuff:
