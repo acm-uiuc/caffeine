@@ -127,6 +127,7 @@ class SerialHandler(threading.Thread):
 					print "You have $%.2f." % vending['balance']
 					self.parent.user = User(user, vending)
 					self.parent.gui.disp("<b>%s %s</b><br /><b>Balance: </b>$%.2f" % (user['first_name'],user['last_name'],vending['balance']))
+					self.parent.state = State.Authenticated
 					# Inform the interface.
 				elif incoming[0] == 'E':
 					print "[debug] Card read failure (try again)"
@@ -150,6 +151,7 @@ class CaffeineTool:
 		self.serialHandler = SerialHandler(self)
 		self.serialHandler.start()
 		self.state = State.Waiting
+		self.tray_contents = None
 	def buttonPress(self, button):
 		print "[debug] Button %d was pressed." % button
 		if self.state == State.Waiting:
@@ -163,13 +165,16 @@ class CaffeineTool:
 			if self.button == button:
 				print "[debug] User has confirmed, vend tray %d." % button
 				self.gui.disp("Vending $TRAY_CONTENTS...")
-				self.state = Self.Vended
+				self.state = State.Vended
 				self.vend(button)
 			else:
 				print "[debug] User has changed request to tray %d." % button
 				self.gui.disp("Press button again to vend $TRAY_CONTENTS")
 				self.state = State.Confirm
 				self.button = button
+		elif self.state == State.Vended:
+			self.state = State.Authenticated
+			self.buttonPress(button)
 	def vend(self, tray):
 		print "[debug] Sending: V" + str(tray)
 		self.se.write("V" + str(tray))
@@ -209,6 +214,7 @@ class CaffeineWindow():
 		print "[debug] GUI is running."
 	def closeButton_pressed(self):
 		print "[debug] Exiting!"
+		self.main_window.hide()
 		self.app.exit()
 	def dispError(self, error):
 		self.status.setText("<center><span style='font-size: 24px; color: #FF0000;'>%s</span></center>" % error)
@@ -223,5 +229,7 @@ Caffeine.gui = CaffeineWindow(Caffeine)
 Caffeine.gui.app.exec_()
 print "[debug] GUI has exited, killing serial..."
 Caffeine.serialHandler.is_running = False
+if (not Caffeine.se.use_real):
+	print "[debug/simulator] Press enter to kill the simulator."
 Caffeine.serialHandler.join()
 print "[debug] Caffeine is terminating."
