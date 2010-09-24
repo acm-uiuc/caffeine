@@ -4,7 +4,6 @@
 import serial, threading, MySQLdb, time, sys
 from PyQt4 import QtGui,QtSvg,QtCore
 
-actually_do_serial_stuff = True
 
 # System states
 class State():
@@ -21,6 +20,32 @@ class User():
 		self.name = db_user['first_name'] + ' ' + db_user['last_name']
 		self.balance = vending['balance']
 		# ... other vending information
+
+class SerialDevice():
+	def __init__(self):
+		try:
+			self.real = serial.Serial('/dev/ttyUSB0', 115200)
+			self.use_real = True
+		except:
+			print "[debug] Serial failure. Enabling simulation."
+			self.use_real = False
+	def read(self):
+		# read
+		if self.use_real:
+			incoming = ""
+			while self.real.inWaiting() > 0:
+				incoming += self.real.read(1)
+			return incoming
+		else:
+			incoming = raw_input(":")
+			return incoming
+	def write(self, data):
+		# write
+		if self.use_real:
+			self.real.write(data)
+		else:
+			print "[simulator]", data
+
 
 # ClearTimeout(caeffineInstance, timeout).start() ...
 # Clear the screen and reset the state.
@@ -43,9 +68,7 @@ class SerialHandler(threading.Thread):
 		while self.is_running:
 			# get incoming data
 			# time.sleep(1)
-			incoming = ""
-			while self.parent.se.inWaiting() > 0:
-				incoming += self.parent.se.read(1)
+			incoming = self.parent.se.read()
 			# print incoming
 			if len(incoming) > 0:
 				print "[debug] Incoming data:", incoming
@@ -113,10 +136,9 @@ class SerialHandler(threading.Thread):
 		self.parent.user = None
 class CaffeineTool:
 	def __init__(self):
-		global actually_do_serial_stuff
 		self.serialHander = None
 		self.db = None
-		self.se = None
+		self.se = SerialDevice()
 		self.gui = None
 		self.user = None
 		self.state = State.Initializing
@@ -125,14 +147,8 @@ class CaffeineTool:
 		self.db_integrate.select_db("acm_integrate")
 		self.db_soda = MySQLdb.connect("db1.acm.uiuc.edu", "soda", "m568EXUFS")
 		self.db_soda.select_db("soda")
-		if actually_do_serial_stuff:
-			try:
-				self.se = serial.Serial('/dev/ttyUSB0',115200) # hello thar
-				self.serialHandler = SerialHandler(self)
-				self.serialHandler.start()
-			except:
-				print "[debug] Could not initialize serial. Entering simulation mode."
-				actually_do_serial_stuff = False
+		self.serialHandler = SerialHandler(self)
+		self.serialHandler.start()
 		self.state = State.Waiting
 	def buttonPress(self, button):
 		print "[debug] Button %d was pressed." % button
@@ -156,24 +172,19 @@ class CaffeineTool:
 				self.button = button
 	def vend(self, tray):
 		print "[debug] Sending: V" + str(tray)
-		if actually_do_serial_stuff:
-			self.se.write("V" + str(tray))
+		self.se.write("V" + str(tray))
 	def setString(self, tray, string):
 		print "[debug] Sending: S" + str(tray) + string
-		if actually_do_serial_stuff:
-			self.se.write("S" + str(tray) + string)
+		self.se.write("S" + str(tray) + string)
 	def setCharacter(self, tray, x, y, c):
 		print "[debug] Sending: C" + str(tray) + str(x) + str(y) + c
-		if actually_do_serial_stuff:
-			self.se.write("C" + str(tray) + str(x) + str(y) + c)
+		self.se.write("C" + str(tray) + str(x) + str(y) + c)
 	def setColor(self, tray, c, v):
 		print "[debug] Sending: B" + str(tray) + c + str(v)
-		if actually_do_serial_stuff:
-			self.se.write("B" + str(tray) + c + str(v))
+		self.se.write("B" + str(tray) + c + str(v))
 	def reset(self):
 		print "[debug] Sending reset."
-		if actually_do_serial_stuff:
-			self.se.write("\xa0")
+		self.se.write("\xa0")
 print "[debug] Welcome to Caffeine."
 Caffeine = CaffeineTool()
 
@@ -211,7 +222,6 @@ print "[debug] Starting GUI..."
 Caffeine.gui = CaffeineWindow(Caffeine)
 Caffeine.gui.app.exec_()
 print "[debug] GUI has exited, killing serial..."
-if actually_do_serial_stuff:
-	Caffeine.serialHandler.is_running = False
-	Caffeine.serialHandler.join()
+Caffeine.serialHandler.is_running = False
+Caffeine.serialHandler.join()
 print "[debug] Caffeine is terminating."
