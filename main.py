@@ -14,6 +14,14 @@ class State():
 	Confirm = 2
 	Vended = 3
 
+class User():
+	def __init__(self, db_user, vending):
+		self.id = db_user['uid']
+		self.uin = db_user['uin']
+		self.name = db_user['first_name'] + ' ' + db_user['last_name']
+		self.balance = vending['balance']
+		# ... other vending information
+
 # ClearTimeout(caeffineInstance, timeout).start() ...
 # Clear the screen and reset the state.
 class ClearTimeout(threading.Thread):
@@ -94,7 +102,7 @@ class SerialHandler(threading.Thread):
 						self.cardError("I know who you are, but the vending databases doesn't.<br />Sorry.")
 						continue
 					print "You have $%.2f." % vending['balance']
-					self.user = user
+					self.parent.user = User(user, vending)
 					self.parent.gui.disp("<b>%s %s</b><br /><b>Balance: </b>$%.2f" % (user['first_name'],user['last_name'],vending['balance']))
 					# Inform the interface.
 				elif incoming[0] == 'E':
