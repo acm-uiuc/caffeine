@@ -109,7 +109,7 @@ class SerialHandler(threading.Thread):
 					print "[debug] Card read failure (try again)"
 					self.parent.gui.dispError("Could not read card.<br />Try again.")
 	def cardError(self, message):
-		self.dispError(message)
+		self.parent.gui.dispError(message)
 		self.parent.user = None
 class CaffeineTool:
 	def __init__(self):
