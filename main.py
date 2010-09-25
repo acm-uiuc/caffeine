@@ -173,7 +173,6 @@ class CaffeineTool:
 			print "[debug] Ignorning (not ready for a button press)"
 		elif self.state == State.Authenticated:
 			print "[debug] Users wants to vend from tray %d." % button
-			self.state = State.Confirm
 			self.button = button
 			self.db_soda.query("SELECT * FROM `trays` WHERE tid=%s" % button)
 			tray_result = self.db_soda.store_result()
@@ -192,8 +191,11 @@ class CaffeineTool:
 			if (self.trayContents.quantity < 1):
 				self.gui.disp("This slot is empty.<br />It used to be %s.<br />Select another item." % self.trayContents.name)
 				self.state = State.Authenticated
+			elif self.user.balance < self.trayContents.price:
+				self.gui.disp("You have selected slot %d.<br />This slot contains %s.<br />You can not afford this item." % (button, self.trayContents.name))
 			else:
-				self.gui.disp("You have selected slot %d.<br />This slot contains %s.<br />Press button %d again to vend." % (button, soda['name'], button))
+				self.state = State.Confirm
+				self.gui.disp("You have selected slot %d.<br />This slot contains %s.<br />Press button %d again to vend." % (button, self.trayContents.name, button))
 		elif self.state == State.Confirm:
 			if self.button == button:
 				print "[debug] User has confirmed, vend tray %d." % button
