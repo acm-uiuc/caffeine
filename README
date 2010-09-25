@@ -2,7 +2,7 @@ This is the repository for the code in Caffeine 3.0, aka New Caffeine
 
 New Caffeine has been classified "3.0" because we have classified the old
 rebuild as "2.0". The New Caffeine is a rather new Coca Cola machine with
-nine total slots (designed slot 0 through slot 8). Each slot holds signi-
+nine total slots (designated slot 0 through slot 8). Each slot holds signi-
 ficantly more soda than the old machine held. Additionally, we can set a
 tray to be in "can" mode and "bottle" mode.
 
