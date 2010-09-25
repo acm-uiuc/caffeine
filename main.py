@@ -214,8 +214,8 @@ class CaffeineTool:
 		print "[debug] Sending: V" + str(tray)
 		# Update tray amounts.
 		self.db_soda.query("SELECT * FROM `trays` WHERE `tid`=%d" % tray)
-		tray = self.db_soda.store_result().fetch_row(how=1)[0]
-		self.db_soda.query("UPDATE TABLE `trays` SET `qty`=%d WHERE `tid`=%d`" % (tray['qty'] - 1, tray))
+		dbtray = self.db_soda.store_result().fetch_row(how=1)[0]
+		self.db_soda.query("UPDATE TABLE `trays` SET `qty`=%d WHERE `tid`=%d`" % (dbtray['qty'] - 1, tray))
 		# Vend the item
 		self.se.write("V" + str(tray))
 	def setString(self, tray, string):
