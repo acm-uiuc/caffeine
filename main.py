@@ -13,6 +13,7 @@ class State():
 	Confirm = 2
 	Vended = 3
 
+# User handling
 class User():
 	def __init__(self, db_user, vending):
 		self.id = db_user['uid']
@@ -21,6 +22,7 @@ class User():
 		self.balance = vending['balance']
 		# ... other vending information
 
+# Serial device wrapper
 class SerialDevice():
 	def __init__(self):
 		try:
@@ -46,6 +48,7 @@ class SerialDevice():
 		else:
 			print "[simulator]", data
 
+# Structure for tray content, combines tray entry and sodas
 class TrayContent():
 	def __init__(self, tray, soda):
 		self.name = soda['name']
@@ -68,6 +71,7 @@ class ClearTimeout(threading.Thread):
 		self.parent.state = State.Waiting
 		self.parent.gui.disp("Welcome to Caffeine!<br />Please scan your card.")
 
+# Serial handling thread
 class SerialHandler(threading.Thread):
 	def __init__(self, parent):
 		threading.Thread.__init__(self)
@@ -144,6 +148,8 @@ class SerialHandler(threading.Thread):
 	def cardError(self, message):
 		self.parent.gui.dispError(message)
 		self.parent.user = None
+
+# Interface object
 class CaffeineTool:
 	def __init__(self):
 		self.serialHander = None
@@ -219,6 +225,7 @@ class CaffeineTool:
 print "[debug] Welcome to Caffeine."
 Caffeine = CaffeineTool()
 
+# GUI (not actually a window)
 class CaffeineWindow():
 	def __init__(self, caffeine_instance):
 		self.caffeine = caffeine_instance
@@ -227,11 +234,8 @@ class CaffeineWindow():
 		self.main_window.resize(1280,1024)
 		self.main_window.setWindowTitle('Caffeine')
 		self.status = QtGui.QLabel("<center>Initializing...</center>")
-		#self.closeButton = QtGui.QPushButton("*DEBUG* Exit GUI *DEBUG*")
-		#self.app.connect(self.closeButton, QtCore.SIGNAL('clicked()'), self.closeButton_pressed)
 		self.vbox = QtGui.QVBoxLayout()
 		self.vbox.addWidget(self.status)
-		#self.vbox.addWidget(self.closeButton)
 		self.cwidget = QtGui.QWidget()
 		self.cwidget.setLayout(self.vbox)
 		self.main_window.setCentralWidget(self.cwidget)
