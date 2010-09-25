@@ -193,13 +193,14 @@ class CaffeineTool:
 				self.gui.disp("This slot is empty.<br />It used to be %s.<br />Select another item." % self.trayContents.name)
 				self.state = State.Authenticated
 			else:
-				self.gui.disp("You have selected slot %d.<br />This is %s.<br />Press button %d again to vend." % (button, soda['name'], button))
+				self.gui.disp("You have selected slot %d.<br />This slot contains %s.<br />Press button %d again to vend." % (button, soda['name'], button))
 		elif self.state == State.Confirm:
 			if self.button == button:
 				print "[debug] User has confirmed, vend tray %d." % button
 				self.gui.disp("Vending %s..." % self.trayContents.name)
 				self.state = State.Vended
 				self.vend(button)
+				ClearTimeout(self,10).start()
 			else:
 				print "[debug] User has changed request to tray %d." % button
 				self.state = State.Authenticated
