@@ -1,1 +1,8 @@
-Either import the old caffeine web or write a new one.
+NOTICE: The old caffeine has been updated to work with the new trays.
+
+We should still make updates to the interface, change the CSS, add some management features.
+
+I'm [lange7] looking at adding the following:
+- Soda management: this currently doesn't exist in the admin interface
+- Move admin to, well, /admin - it's currently /pics (... yeah)
+- Once games are present, abilities to view game data, etc.
