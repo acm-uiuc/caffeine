@@ -12,6 +12,7 @@ class State():
 	Authenticated = 1
 	Confirm = 2
 	Vended = 3
+	Blocking = 4
 
 # User handling
 class User():
@@ -67,6 +68,7 @@ class ClearTimeout(threading.Thread):
 		self.parent = parent
 		self.timeout = timeout
 	def run(self):
+		self.parent.state = State.Blocking
 		time.sleep(self.timeout)
 		self.parent.state = State.Waiting
 		self.parent.gui.disp("Welcome to Caffeine!<br />Please scan your card.")
@@ -102,6 +104,9 @@ class SerialHandler(threading.Thread):
 						continue
 					print "[debug] Button up:", str(buttonId)
 				elif incoming[0] == 'C':
+					if self.parent.state is not State.Waiting:
+						print "[debug] Ignoring card read - not waiting for one."
+						continue
 					cardData = ""
 					try:
 						cardData = incoming[1:]
@@ -169,6 +174,8 @@ class CaffeineTool:
 		self.tray_contents = None
 	def buttonPress(self, button):
 		print "[debug] Button %d was pressed." % button
+		if self.state == State.Blocking:
+			print "[debug] System is blocking to clear, ignoring."
 		if self.state == State.Waiting:
 			print "[debug] Ignorning (not ready for a button press)"
 		elif self.state == State.Authenticated:
@@ -201,6 +208,7 @@ class CaffeineTool:
 				print "[debug] User has confirmed, vend tray %d." % button
 				self.gui.disp("Vending %s..." % self.trayContents.name)
 				self.state = State.Vended
+				self.charge(self.trayContents.price)
 				self.vend(button)
 				ClearTimeout(self,10).start()
 			else:
@@ -210,12 +218,20 @@ class CaffeineTool:
 		elif self.state == State.Vended:
 			self.state = State.Authenticated
 			self.buttonPress(button)
+	def charge(self, amount):
+		print "[debug] Charging user %s $%.2f ($%.2f -> $%.2f)" % (self.user.name, amount, self.user.balance, self.user.balance - amount)
+		# First add the transaction to vending_transactions
+		self.db_integrate.query("INSERT INTO `vending_transactions` VALUES (NULL, NULL, %d, %.2f, -1)" % (self.user.id, amount))
+		print "INSERT INTO `vending_transactions` VALUES (NULL, NULL, %d, %.2f, -1)" % (self.user.id, amount)
+		self.db_integrate.query("UPDATE `vending` SET `balance`=%.2f WHERE `uid`=%d" % (self.user.balance - amount, self.user.id))
+		self.db_integrate.commit()
 	def vend(self, tray):
 		print "[debug] Sending: V" + str(tray)
 		# Update tray amounts.
 		self.db_soda.query("SELECT * FROM `trays` WHERE `tid`=%d" % tray)
 		dbtray = self.db_soda.store_result().fetch_row(how=1)[0]
 		self.db_soda.query("UPDATE `trays` SET `qty`=%d WHERE `tid`=%d" % (dbtray['qty'] - 1, tray))
+		self.db_soda.commit()
 		# Vend the item
 		self.se.write("V" + str(tray))
 	def setString(self, tray, string):
@@ -230,6 +246,12 @@ class CaffeineTool:
 	def reset(self):
 		print "[debug] Sending reset."
 		self.se.write("\xa0")
+	def cancelTransaction(self):
+		self.user = None
+		if not self.state == State.Waiting:
+			self.state = State.Waiting
+			self.gui.disp("Transaction cancelled, you have been signed out.")
+			ClearTimeout(self, 5)
 print "[debug] Welcome to Caffeine."
 Caffeine = CaffeineTool()
 
@@ -242,8 +264,11 @@ class CaffeineWindow():
 		self.main_window.resize(1280,1024)
 		self.main_window.setWindowTitle('Caffeine')
 		self.status = QtGui.QLabel("<center>Initializing...</center>")
+		self.cancel = QtGui.QPushButton("Cancel")
 		self.vbox = QtGui.QVBoxLayout()
 		self.vbox.addWidget(self.status)
+		self.vbox.addWidget(self.cancel)
+		self.main_window.connect(self.cancel, QtCore.SIGNAL("clicked()"), self.caffeine.cancelTransaction)
 		self.cwidget = QtGui.QWidget()
 		self.cwidget.setLayout(self.vbox)
 		self.main_window.setCentralWidget(self.cwidget)
