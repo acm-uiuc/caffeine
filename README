@@ -1,1 +1,29 @@
-This is the repository for the code in Caffeine 2.
+This is the repository for the code in Caffeine 3.0, aka New Caffeine
+
+New Caffeine has been classified "3.0" because we have classified the old
+rebuild as "2.0". The New Caffeine is a rather new Coca Cola machine with
+nine total slots (designed slot 0 through slot 8). Each slot holds signi-
+ficantly more soda than the old machine held. Additionally, we can set a
+tray to be in "can" mode and "bottle" mode.
+
+The custom ACM modifications to the machine include:
+- LCD tray indicators.
+  Where the sample images on a regular machine are, we are putting
+  two-ray LCDs with customizable backlight colors. The backlights
+  will vary in color from blue, through green, yellow, orange, and
+  finally red, to indicate amount of product left. The displays
+  themselves will show the product name, price, caffeine, and
+  other information (the latter bits scrolling on the second row).
+- Linux X/Qt interface.
+  Acting as the middle ground between the embedded system that
+  controls the machine and the network backend that stores the
+  tray items will be an embedded Linux computer, most likely a
+  Beagle board or other related system. This computer will run,
+  on a small (touch)screen, an embedded X server on which will
+  run the graphical elements of the new machine.
+- Game interface.
+  As an added bonus, and with the capabilities of the LCD displays,
+  we are planning to add some games to the machine, such as Space
+  Invaders. This is all subject to whatever extra time we have and
+  no work on it will be done until the system works like the old one.
+
