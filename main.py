@@ -159,19 +159,22 @@ class CaffeineTool:
 	def __init__(self):
 		self.serialHander = None
 		self.db = None
-		self.se = SerialDevice()
 		self.gui = None
 		self.user = None
 		self.state = State.Initializing
 		self.button = -1
+		print "[debug] Connecting to databases."
 		self.db_integrate = MySQLdb.connect("db1.acm.uiuc.edu","soda","m568EXUFS")
 		self.db_integrate.select_db("acm_integrate")
 		self.db_soda = MySQLdb.connect("db1.acm.uiuc.edu", "soda", "m568EXUFS")
 		self.db_soda.select_db("soda")
 		self.db_integrate.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
 		self.db_soda.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+		print "[debug] Starting serial handling."
+		self.se = SerialDevice()
 		self.serialHandler = SerialHandler(self)
 		self.serialHandler.start()
+		print "[debug] Ready to go."
 		self.state = State.Waiting
 		self.tray_contents = None
 	def buttonPress(self, button):
@@ -254,6 +257,18 @@ class CaffeineTool:
 			self.state = State.Waiting
 			self.gui.disp("Transaction cancelled, you have been signed out.")
 			ClearTimeout(self, 5)
+	def setupTrays(self):
+		# In the future, this will set LCD text
+		self.trays = []
+		self.db_soda.query("SELECT * FROM `trays`")
+		trayh = self.db_soda.store_result()
+		for i in xrange(9):
+			tray = trayh.fetch_row(how=1)[0]
+			self.db_soda.query("SELECT * FROM `sodas` WHERE sid=%d" % int(tray['sid']))
+			soda_result = self.db_soda.store_result()
+			soda = soda_result.fetch_row(how=1)[0]
+			self.trays.append(TrayContent(tray,soda))
+			self.gui.setTrayLabel(i, "%s<br />Price: $%.2f<br />Calories: %d<br />Caffeine: %d<br />Quantity: %d" % (self.trays[i].name, self.trays[i].price, self.trays[i].calories, self.trays[i].caffeine, self.trays[i].quantity), self.trays[i].quantity)
 print "[debug] Welcome to Caffeine."
 Caffeine = CaffeineTool()
 
@@ -261,6 +276,7 @@ Caffeine = CaffeineTool()
 class CaffeineWindow():
 	def __init__(self, caffeine_instance):
 		self.caffeine = caffeine_instance
+		self.caffeine.gui = self
 		self.app = QtGui.QApplication(sys.argv)
 		self.main_window = QtGui.QMainWindow()
 		self.main_window.resize(1280,1024)
@@ -269,12 +285,21 @@ class CaffeineWindow():
 		self.cancel = QtGui.QPushButton("Cancel")
 		self.vbox = QtGui.QVBoxLayout()
 		self.vbox.addWidget(self.status)
+		self.hbox = QtGui.QHBoxLayout()
+		self.itemLabels = []
+		for i in xrange(9):
+			self.itemLabels.append(QtGui.QLabel("Tray %d" % i))
+			self.hbox.addWidget(self.itemLabels[i])
+		self.trayWidget = QtGui.QWidget()
+		self.trayWidget.setLayout(self.hbox)
+		self.vbox.addWidget(self.trayWidget)
 		self.vbox.addWidget(self.cancel)
 		self.main_window.connect(self.cancel, QtCore.SIGNAL("clicked()"), self.caffeine.cancelTransaction)
 		self.cwidget = QtGui.QWidget()
 		self.cwidget.setLayout(self.vbox)
 		self.main_window.setCentralWidget(self.cwidget)
 		self.main_window.show()
+		self.caffeine.setupTrays()
 		ClearTimeout(self.caffeine, 1).start()
 		print "[debug] GUI is running."
 	def closeButton_pressed(self):
@@ -288,10 +313,14 @@ class CaffeineWindow():
 		self.status.setText("<center><span style='font-size: 24px;'>%s</span></center>" % message)
 	def drawStuff(self):
 		pass
+	def setTrayLabel(self, tray, label, quantity):
+		if quantity == 0:
+			self.itemLabels[tray].setText("<center><span style='font-size: 12px; font-weight: bold; color: #FF0000'>%s</span></center>" % label)
+		else:
+			self.itemLabels[tray].setText("<center><span style='font-size: 12px; font-weight: bold;'>%s</span></center>" % label)
 
 print "[debug] Starting GUI..."
-Caffeine.gui = CaffeineWindow(Caffeine)
-Caffeine.gui.app.exec_()
+CaffeineWindow(Caffeine).app.exec_()
 print "[debug] GUI has exited, killing serial..."
 Caffeine.serialHandler.is_running = False
 if (not Caffeine.se.use_real):
