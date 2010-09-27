@@ -168,6 +168,8 @@ class CaffeineTool:
 		self.db_integrate.select_db("acm_integrate")
 		self.db_soda = MySQLdb.connect("db1.acm.uiuc.edu", "soda", "m568EXUFS")
 		self.db_soda.select_db("soda")
+		self.db_integrate.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
+		self.db_soda.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED")
 		self.serialHandler = SerialHandler(self)
 		self.serialHandler.start()
 		self.state = State.Waiting
