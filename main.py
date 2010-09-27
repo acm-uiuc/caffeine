@@ -283,8 +283,13 @@ class CaffeineWindow():
 		self.main_window.setWindowTitle('Caffeine')
 		self.status = QtGui.QLabel("<center>Initializing...</center>")
 		self.cancel = QtGui.QPushButton("Cancel")
+		self.header = QtGui.QLabel("<center><img src='caffeine.png' /></center>")
+		self.header.setMaximumHeight(142)
 		self.vbox = QtGui.QVBoxLayout()
+		self.vbox.addWidget(self.header)
 		self.vbox.addWidget(self.status)
+		self.vbox.setSpacing(0)
+		self.main_window.setContentsMargins(0,0,0,0)
 		self.hbox = QtGui.QHBoxLayout()
 		self.itemLabels = []
 		for i in xrange(9):
@@ -292,6 +297,7 @@ class CaffeineWindow():
 			self.hbox.addWidget(self.itemLabels[i])
 		self.trayWidget = QtGui.QWidget()
 		self.trayWidget.setLayout(self.hbox)
+		self.trayWidget.setMaximumHeight(150)
 		self.vbox.addWidget(self.trayWidget)
 		self.vbox.addWidget(self.cancel)
 		self.main_window.connect(self.cancel, QtCore.SIGNAL("clicked()"), self.caffeine.cancelTransaction)
