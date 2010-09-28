@@ -39,9 +39,7 @@ class SerialDevice():
 	def read(self):
 		# read
 		if self.use_real:
-			print "[debug] Starting read."
 			incoming = self.real.read(255)
-			print "[debug] Finished read:",incoming
 			return incoming
 		else:
 			incoming = raw_input(":")
@@ -87,7 +85,6 @@ class SerialHandler(threading.Thread):
 	def run(self):
 		while self.is_running:
 			# get incoming data
-			print "reading [thread...]"
 			incoming = self.parent.se.read()
 			# print incoming
 			if len(incoming) > 0:
