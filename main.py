@@ -27,17 +27,21 @@ class User():
 class SerialDevice():
 	def __init__(self):
 		try:
-			self.real = serial.Serial('/dev/ttyUSB0', 115200)
+			self.real = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
 			self.use_real = True
 		except:
-			print "[debug] Serial failure. Enabling simulation."
-			self.use_real = False
+			try:
+				self.real = serial.Serial('/dev/ttyUSB1', 115200, timeout=0.1)
+				self.use_real = True
+			except:
+				print "[debug] Serial failure. Enabling simulation."
+				self.use_real = False
 	def read(self):
 		# read
 		if self.use_real:
-			incoming = ""
-			while self.real.inWaiting() > 0:
-				incoming += self.real.read(1)
+			print "[debug] Starting read."
+			incoming = self.real.read(255)
+			print "[debug] Finished read:",incoming
 			return incoming
 		else:
 			incoming = raw_input(":")
@@ -79,10 +83,11 @@ class SerialHandler(threading.Thread):
 		threading.Thread.__init__(self)
 		self.parent = parent
 		self.is_running = True
+		print "hello"
 	def run(self):
 		while self.is_running:
 			# get incoming data
-			# time.sleep(1)
+			print "reading [thread...]"
 			incoming = self.parent.se.read()
 			# print incoming
 			if len(incoming) > 0:
@@ -95,6 +100,9 @@ class SerialHandler(threading.Thread):
 						print "[debug] Button down: This isn't a number..."
 						continue
 					print "[debug] Button down:", str(buttonId)
+					if buttonId == 0:
+						self.parent.cancelTransaction()
+						ClearTimeout(self.parent,0)
 					self.parent.buttonPress(buttonId)
 				elif incoming[0] == 'U':
 					try:
