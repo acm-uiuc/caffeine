@@ -3,7 +3,7 @@
 
 import serial, threading, MySQLdb, time, sys
 from PyQt4 import QtGui,QtSvg,QtCore
-
+import subprocess
 
 # System states
 class State():
@@ -73,7 +73,9 @@ class ClearTimeout(threading.Thread):
 		self.parent.state = State.Blocking
 		time.sleep(self.timeout)
 		self.parent.state = State.Waiting
-		self.parent.gui.disp("Welcome to Caffeine!<br />Please scan your card.")
+		self.parent.setupTrays()
+		fortune = subprocess.Popen(["/usr/games/fortune"], stdout=subprocess.PIPE).communicate()[0].replace("\n", "<br />")
+		self.parent.gui.disp("Welcome to Caffeine!<br />Please scan your card.<br /><span style='font-size: 14px;'><i>%s</i></span>" % fortune)
 
 # Serial handling thread
 class SerialHandler(threading.Thread):
@@ -81,7 +83,6 @@ class SerialHandler(threading.Thread):
 		threading.Thread.__init__(self)
 		self.parent = parent
 		self.is_running = True
-		print "hello"
 	def run(self):
 		while self.is_running:
 			# get incoming data
@@ -99,7 +100,6 @@ class SerialHandler(threading.Thread):
 					print "[debug] Button down:", str(buttonId)
 					if buttonId == 0:
 						self.parent.cancelTransaction()
-						ClearTimeout(self.parent,0)
 					self.parent.buttonPress(buttonId)
 				elif incoming[0] == 'U':
 					try:
@@ -147,7 +147,7 @@ class SerialHandler(threading.Thread):
 					else:
 						self.cardError("I know who you are, but the vending databases doesn't.<br />Sorry.")
 						continue
-					print "You have $%.2f." % vending['balance']
+					print "[debug] User has $%.2f." % vending['balance']
 					self.parent.user = User(user, vending)
 					self.parent.gui.disp("<b>%s %s</b><br /><b>Balance: </b>$%.2f" % (user['first_name'],user['last_name'],vending['balance']))
 					self.parent.state = State.Authenticated
@@ -216,11 +216,11 @@ class CaffeineTool:
 		elif self.state == State.Confirm:
 			if self.button == button:
 				print "[debug] User has confirmed, vend tray %d." % button
-				self.gui.disp("Vending %s..." % self.trayContents.name)
+				self.gui.disp("Vending %s.<br />Thank you for using Caffeine.<br />Please open your can slowly!" % self.trayContents.name)
 				self.state = State.Vended
 				self.charge(self.trayContents.price)
 				self.vend(button)
-				ClearTimeout(self,10).start()
+				ClearTimeout(self,5).start()
 			else:
 				print "[debug] User has changed request to tray %d." % button
 				self.state = State.Authenticated
@@ -261,8 +261,8 @@ class CaffeineTool:
 		self.user = None
 		if not self.state == State.Waiting:
 			self.state = State.Waiting
-			self.gui.disp("Transaction cancelled, you have been signed out.")
-			ClearTimeout(self, 5)
+			self.gui.disp("Transaction cancelled, you have been signed out.<br />Thank you for using Caffeine.")
+			ClearTimeout(self, 2).start()
 	def setupTrays(self):
 		# In the future, this will set LCD text
 		self.trays = []
@@ -274,7 +274,7 @@ class CaffeineTool:
 			soda_result = self.db_soda.store_result()
 			soda = soda_result.fetch_row(how=1)[0]
 			self.trays.append(TrayContent(tray,soda))
-			self.gui.setTrayLabel(i, "%s<br />Price: $%.2f<br />Calories: %d<br />Caffeine: %d<br />Quantity: %d" % (self.trays[i].name, self.trays[i].price, self.trays[i].calories, self.trays[i].caffeine, self.trays[i].quantity), self.trays[i].quantity)
+			self.gui.setTrayLabel(i, "Tray %d<br />%s<br />Price: $%.2f<br />Calories: %d<br />Caffeine: %d<br />Quantity: %d" % (i, self.trays[i].name, self.trays[i].price, self.trays[i].calories, self.trays[i].caffeine, self.trays[i].quantity), self.trays[i].quantity)
 print "[debug] Welcome to Caffeine."
 Caffeine = CaffeineTool()
 
@@ -305,7 +305,7 @@ class CaffeineWindow():
 		self.trayWidget.setLayout(self.hbox)
 		self.trayWidget.setMaximumHeight(150)
 		self.vbox.addWidget(self.trayWidget)
-		self.vbox.addWidget(self.cancel)
+		# self.vbox.addWidget(self.cancel)
 		self.main_window.connect(self.cancel, QtCore.SIGNAL("clicked()"), self.caffeine.cancelTransaction)
 		self.cwidget = QtGui.QWidget()
 		self.cwidget.setLayout(self.vbox)
@@ -320,7 +320,7 @@ class CaffeineWindow():
 		self.app.exit()
 	def dispError(self, error):
 		self.status.setText("<center><span style='font-size: 24px; color: #FF0000;'>%s</span></center>" % error)
-		ClearTimeout(self.caffeine, 3).start()
+		ClearTimeout(self.caffeine, 1).start()
 	def disp(self, message):
 		self.status.setText("<center><span style='font-size: 24px;'>%s</span></center>" % message)
 	def drawStuff(self):
