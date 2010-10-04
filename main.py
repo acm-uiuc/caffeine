@@ -5,6 +5,10 @@ import serial, threading, MySQLdb, time, sys
 from PyQt4 import QtGui,QtSvg,QtCore
 import subprocess
 
+sys.stdout = open("debug.out", 'a')
+sys.stderr = open("debug.err", 'a')
+
+
 # System states
 class State():
 	Initializing = -1
