@@ -116,7 +116,7 @@
 
 #include "caffeine.h"
 
-#define VERSION_DATA " Caffeine2 v0.3 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
+#define VERSION_DATA " Caffeine2 v0.5 - (c) 2010 SIGEmbeded, ACM UIUC; licensed under NCSA license."
 #define CAPABILITY_DATA " CMD: PCSRVvc  RES: CUDAEFs"
 
 // Card data globals
@@ -125,6 +125,9 @@ unsigned char card_bit_counter, card_byte_counter, card_status = 0;
 
 // Command processing globals
 char current_command;
+
+// Watchdog variable
+uint8_t command_watchdog;
 
 // Serial transmit buffer globals
 char transmit_buffer[TX_BUF_L];
@@ -210,7 +213,11 @@ ISR(INT1_vect) {
 // ISR is triggered.  
 ISR(USART0_RX_vect) {
 
-	unsigned char input_char, i, j;
+	unsigned char input_char, j;
+  uint8_t i;
+
+  // Reset the command watchdog
+  command_watchdog = 0;
 
 	// Read in the input character
 	input_char = UDR0;
@@ -334,7 +341,7 @@ ISR(USART0_RX_vect) {
 						receive_buffer[2] -= 0x30;
 						receive_buffer[2] >>= 5;
 						i = receive_buffer[0] * 3 + receive_buffer[1];
-						i = i | recieve_buffer[2];
+						i = i | receive_buffer[2];
 						cli();
 						j = PINB;
 						PORTB = i;
@@ -390,13 +397,25 @@ ISR(USART0_TX_vect) {
 // Vend a selection.
 void vend(unsigned char selection) {
 
+  uint8_t tmp_input, output_select;
 	// Check for validity of the selection
 	if (selection < SEL_NUM) {
+    output_select = selection & 0x03;
+    output_select |= ((selection & 0x0b) << 1);
+    cli();
 
-		toggle_select(selection + 1);
-		// Wait a second and a half and then take out the selection.
-		_delay_ms(1500);
-		toggle_select(selection + 1);
+    tmp_input = PORTC & 0xe0;
+    PORTC = tmp_input;
+    _delay_us(1);
+    PORTC = tmp_input | 0x04;
+    _delay_us(1);
+    PORTC = tmp_input | output_select;
+    _delay_us(1);
+    PORTC = tmp_input | output_select | 0x04;
+    _delay_us(1);
+    PORTC = tmp_input;
+
+    sei();
 
 		// Give the computer an ack that the soda has been vended.  One day
 		// we may add a jam ('lo jams) detection in.
@@ -409,24 +428,6 @@ void toggle_select(unsigned char selection) {
 
 	unsigned char i;
 
-	if (selection < 32) {
-
-		while (PINC & 0x1f) 
-			_delay_us(2);
-
-		cli();
-		i = PINC;
-		PORTC = i + (selection + 1);
-		_delay_us(2);
-		PORTC = i;
-
-		if (selection > 18)
-			_delay_us(25);
-		else
-			_delay_us(4);
-		sei();
-
-	}
 }
 
 // Send an ack to the computer.
@@ -692,12 +693,12 @@ inline void lcd_clear(char lcd) {
 			toggle_select(31);
 			_delay_us(1);
 			toggle_select(30);
-			_dealy_us(1);
+			_delay_us(1);
 		} else {
 			toggle_select(lcd);
 			_delay_us(1);
 			toggle_select(lcd);
-			_dalay_us(1);
+			_delay_us(1);
 		}
 	}
 	_delay_us(39);
@@ -767,7 +768,7 @@ int main() {
 	uint16_t input;
 	uint16_t button_status = 0;
 	uint16_t  mask;
-	
+
 	// Array for debouncing.
 	unsigned char button_debounce[SEL_NUM];
 
@@ -790,7 +791,7 @@ int main() {
 	// Initalize data, LCDs
 	reset_card_data();
 	reset_command_processing();
-	init_lcd_panels();
+	//init_lcd_panels();
 
 	// We'd be useless without interrupts.  It may be a good idea to turn them on.
 	sei();
@@ -846,6 +847,13 @@ int main() {
 			// CHANGE PLACES!
 			mask <<= 1;
 		}
+
+    command_watchdog++;
+
+    if (command_watchdog > 250) {
+    //  reset_command_processing();
+      command_watchdog = 0;
+    }
 
 		// Wait a tick.
 		_delay_ms(1);
