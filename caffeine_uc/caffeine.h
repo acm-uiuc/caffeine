@@ -64,13 +64,13 @@ void send_char(char c);
 void send_button_down(unsigned char button);
 void send_button_up(unsigned char button);
 
-void toggle_select(unsigned char selection);
+void lcd_command(char command, char lcd);
+void lcd_write(char c, char lcd);
 
-inline void lcd_command(char command, char lcd);
-inline void lcd_write(char c, char lcd);
+void lcd_home(char lcd);
+void lcd_clear(char lcd);
 
-inline void lcd_home(char lcd);
-inline void lcd_clear(char lcd);
+void led_set_color(uint8_t lcd, uint8_t led, uint8_t value);
 
 void init_lcd_panels();
 void reset_card_data();
